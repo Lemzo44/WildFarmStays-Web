@@ -140,10 +140,16 @@ export default function ListingsScreen({ onNavigate }: ListingsScreenProps = {})
       if (result.success) {
         console.log('✅ Conversation ready');
         // Navigate to Messages screen (would need navigation prop)
+        onNavigate?.('messages');
       }
     } catch (error) {
       console.error('Error starting conversation:', error);
     }
+  };
+
+  const handleBookNow = (listing: any) => {
+    // Navigate to booking screen with the listing
+    onNavigate?.('booking', listing);
   };
 
   const toggleAmenitiesExpansion = (listingId: string) => {
@@ -651,6 +657,18 @@ const styles = StyleSheet.create({
   actionButtons: {
     flexDirection: 'row',
     gap: 8,
+  },
+  bookNowButton: {
+    backgroundColor: '#2E7D32',
+    flex: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  bookNowButtonText: {
+    fontSize: 12,
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
   messageButton: {
     backgroundColor: '#E8F5E8',
