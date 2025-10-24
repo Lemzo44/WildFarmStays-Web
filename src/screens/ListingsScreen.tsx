@@ -398,7 +398,10 @@ export default function ListingsScreen({ onNavigate }: ListingsScreenProps = {})
       {isFarmer && (
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Quick Actions</Text>
-          <TouchableOpacity style={styles.primaryButton}>
+          <TouchableOpacity 
+            style={styles.primaryButton}
+            onPress={() => onNavigate?.('create-listing')}
+          >
             <Text style={styles.primaryButtonText}>➕ Add New Listing</Text>
           </TouchableOpacity>
         </View>
