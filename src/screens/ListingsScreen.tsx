@@ -400,7 +400,10 @@ export default function ListingsScreen({ onNavigate }: ListingsScreenProps = {})
           <Text style={styles.cardTitle}>Quick Actions</Text>
           <TouchableOpacity 
             style={styles.primaryButton}
-            onPress={() => onNavigate?.('create-listing')}
+            onPress={() => {
+              console.log('Button clicked! Navigating to create-listing');
+              onNavigate?.('create-listing');
+            }}
           >
             <Text style={styles.primaryButtonText}>➕ Add New Listing</Text>
           </TouchableOpacity>
