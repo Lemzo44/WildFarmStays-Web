@@ -405,7 +405,7 @@ export default function ListingsScreen({ onNavigate }: ListingsScreenProps = {})
               onNavigate?.('create-listing');
             }}
           >
-            <Text style={styles.primaryButtonText}>➕ Add New Listing</Text>
+            <Text style={styles.primaryButtonText}>➕ Add New Listing v2</Text>
           </TouchableOpacity>
         </View>
       )}
