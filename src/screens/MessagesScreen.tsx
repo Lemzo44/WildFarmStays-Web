@@ -266,10 +266,6 @@ export default function MessagesScreen() {
         <Text style={styles.subtitle}>
           Stay connected with {currentUser?.role === 'farmer' ? 'campers' : 'farmers'}
         </Text>
-        {/* Debug info */}
-        <Text style={styles.debugText}>
-          Debug: User ID: {currentUser?.id}, Role: {currentUser?.role}
-        </Text>
       </View>
 
       {conversations.length > 0 ? (
@@ -315,12 +311,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     opacity: 0.7,
     color: '#666',
-  },
-  debugText: {
-    fontSize: 12,
-    color: '#FF0000',
-    marginTop: 4,
-    fontWeight: 'bold',
   },
   loadingContainer: {
     flex: 1,
