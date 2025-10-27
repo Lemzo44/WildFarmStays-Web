@@ -246,23 +246,19 @@ export default function BookingScreen({ listing, onNavigate }: BookingScreenProp
 
       const result = await BookingService.createBooking(bookingData);
       
-      // Show success and navigate
-      Alert.alert(
-        '✅ Success!',
-        'Booking request sent successfully!',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              onNavigate?.('home');
-            }
-          }
-        ]
-      );
-    } catch (error) {
+      // Show success message and navigate
+      alert('✅ Booking request sent successfully!');
+      onNavigate?.('home');
+    } catch (error: any) {
       console.error('Error creating booking:', error);
-      setError('Failed to create booking');
+      
+      // Show specific error message
+      const errorMessage = error.message || 'Failed to create booking';
+      setError(errorMessage);
       setShowError(true);
+      
+      // Display error in alert as well for better UX
+      alert(`Booking Error: ${errorMessage}`);
     } finally {
       setLoading(false);
     }

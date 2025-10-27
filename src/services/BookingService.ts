@@ -51,10 +51,67 @@ export class BookingService {
   }
 
   /**
+   * Check if a camper has overlapping bookings (regardless of listing)
+   */
+  static async checkCamperHasConflictingBookings(camperId: string, checkInDate: string, checkOutDate: string): Promise<{hasConflict: boolean, conflictingBookings: Booking[]}> {
+    try {
+      const allBookings = await LocalStorageService.getAll('bookings');
+      const camperBookings = allBookings.filter((booking: Booking) => 
+        booking.camperId === camperId &&
+        booking.status !== 'cancelled'
+      );
+
+      const requestedCheckIn = new Date(checkInDate);
+      const requestedCheckOut = new Date(checkOutDate);
+
+      const conflictingBookings = camperBookings.filter((booking: Booking) => {
+        const existingCheckIn = new Date(booking.startDate);
+        const existingCheckOut = new Date(booking.endDate);
+
+        return (
+          (requestedCheckIn >= existingCheckIn && requestedCheckIn < existingCheckOut) ||
+          (requestedCheckOut > existingCheckIn && requestedCheckOut <= existingCheckOut) ||
+          (requestedCheckIn <= existingCheckIn && requestedCheckOut >= existingCheckOut)
+        );
+      });
+
+      return {
+        hasConflict: conflictingBookings.length > 0,
+        conflictingBookings: conflictingBookings
+      };
+    } catch (error) {
+      console.error('Error checking camper bookings:', error);
+      throw new Error('Failed to check camper bookings');
+    }
+  }
+
+  /**
    * Create a new booking
    */
   static async createBooking(bookingData: Omit<Booking, 'id' | 'createdAt' | 'updatedAt'>): Promise<Booking> {
     try {
+      // Check if camper already has a booking for these dates (across all listings)
+      const camperConflict = await this.checkCamperHasConflictingBookings(
+        bookingData.camperId,
+        bookingData.startDate,
+        bookingData.endDate
+      );
+
+      if (camperConflict.hasConflict) {
+        throw new Error('You already have a booking for these dates');
+      }
+
+      // Check if this specific listing is available for these dates
+      const availability = await this.checkAvailability(
+        bookingData.listingId,
+        bookingData.startDate,
+        bookingData.endDate
+      );
+
+      if (!availability.available) {
+        throw new Error('This listing is not available for the selected dates');
+      }
+
       const booking: Booking = {
         ...bookingData,
         id: Date.now().toString(),
@@ -66,7 +123,7 @@ export class BookingService {
       return booking;
     } catch (error) {
       console.error('Error creating booking:', error);
-      throw new Error('Failed to create booking');
+      throw error;
     }
   }
 
