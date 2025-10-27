@@ -70,6 +70,28 @@ export default function TermsScreen({ onNavigate }: TermsScreenProps) {
           If you have any questions about these Terms of Service, please contact us through our Contact Us page.
         </Text>
       </View>
+
+      {/* Footer */}
+      <View style={styles.footer}>
+        <View style={styles.footerLinks}>
+          <TouchableOpacity onPress={() => onNavigate?.('about')}>
+            <Text style={styles.footerLink}>About Us</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => onNavigate?.('faqs')}>
+            <Text style={styles.footerLink}>FAQs</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => onNavigate?.('terms')}>
+            <Text style={styles.footerLink}>Terms</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => onNavigate?.('privacy')}>
+            <Text style={styles.footerLink}>Privacy</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => onNavigate?.('contact')}>
+            <Text style={styles.footerLink}>Contact</Text>
+          </TouchableOpacity>
+        </View>
+        <Text style={styles.footerText}>© 2024 WildFarmStays. All rights reserved.</Text>
+      </View>
     </ScrollView>
   );
 }
@@ -141,6 +163,27 @@ const styles = StyleSheet.create({
     color: '#666',
     marginLeft: 16,
     marginBottom: 8,
+  },
+  footer: {
+    backgroundColor: '#333',
+    padding: 32,
+    alignItems: 'center',
+  },
+  footerLinks: {
+    flexDirection: 'row',
+    gap: 24,
+    marginBottom: 16,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+  },
+  footerLink: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  footerText: {
+    color: '#999',
+    fontSize: 12,
   },
 });
 

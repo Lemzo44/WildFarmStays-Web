@@ -159,8 +159,8 @@ const styles = StyleSheet.create({
   },
   heroSection: {
     backgroundColor: '#2E7D32',
-    padding: 40,
-    paddingTop: 60,
+    padding: 20,
+    paddingTop: 40,
   },
   heroHeader: {
     flexDirection: 'row',
@@ -168,21 +168,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: '100%',
     marginBottom: 16,
+    position: 'relative',
   },
   heroTitle: {
-    fontSize: 48,
+    fontSize: 36,
     fontWeight: 'bold',
     color: '#FFFFFF',
     textAlign: 'center',
     flex: 1,
+    paddingRight: 12,
   },
   loginButton: {
     backgroundColor: '#FFFFFF',
     paddingVertical: 10,
-    paddingHorizontal: 24,
+    paddingHorizontal: 16,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#FFFFFF',
+    maxWidth: 100,
+    minWidth: 70,
   },
   loginButtonText: {
     color: '#2E7D32',
@@ -190,9 +194,9 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   heroSubtitle: {
-    fontSize: 20,
+    fontSize: 16,
     color: '#E8F5E8',
-    marginBottom: 32,
+    marginBottom: 24,
     textAlign: 'center',
   },
   heroButtons: {

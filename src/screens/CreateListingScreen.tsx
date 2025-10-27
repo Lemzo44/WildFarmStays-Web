@@ -17,6 +17,7 @@ export default function CreateListingScreen({ onNavigate }: CreateListingScreenP
     price: '',
     address: '',
     postcode: '',
+    county: '',
     location: '',
     parkingLocation: '',
     cancellationPolicy: '',
@@ -81,6 +82,17 @@ export default function CreateListingScreen({ onNavigate }: CreateListingScreenP
   const seasonalHighlights = [
     'Spring Wildflowers', 'Summer Swimming', 'Fall Colors', 'Winter Views',
     'Bird Watching', 'Stargazing', 'Harvest Season', 'Wildlife Migration'
+  ];
+
+  const counties = [
+    // Northern Ireland
+    'Antrim', 'Armagh', 'Down', 'Fermanagh', 'Londonderry', 'Tyrone',
+    // Republic of Ireland
+    'Carlow', 'Cavan', 'Clare', 'Cork', 'Donegal', 'Dublin', 'Galway',
+    'Kerry', 'Kildare', 'Kilkenny', 'Laois', 'Leitrim', 'Limerick',
+    'Longford', 'Louth', 'Mayo', 'Meath', 'Monaghan', 'Offaly',
+    'Roscommon', 'Sligo', 'Tipperary', 'Waterford', 'Westmeath',
+    'Wexford', 'Wicklow'
   ];
 
   const handleInputChange = (field: string, value: string | number) => {
@@ -291,6 +303,11 @@ export default function CreateListingScreen({ onNavigate }: CreateListingScreenP
       setShowError(true);
       return false;
     }
+    if (!formData.county.trim()) {
+      setError('Please select a county.');
+      setShowError(true);
+      return false;
+    }
     if (formData.amenities.length === 0) {
       setError('Please select at least one amenity.');
       setShowError(true);
@@ -321,7 +338,10 @@ export default function CreateListingScreen({ onNavigate }: CreateListingScreenP
         price: parseFloat(formData.price),
         address: formData.address.trim(),
         postcode: formData.postcode.trim(),
+        county: formData.county.trim(),
         location: formData.location.trim(),
+        parkingLocation: formData.parkingLocation.trim(),
+        cancellationPolicy: formData.cancellationPolicy.trim(),
         coordinates: formData.coordinates,
         latitude: formData.coordinates?.latitude || 54.7024, // Use actual coordinates or fallback
         longitude: formData.coordinates?.longitude || -3.2766,
@@ -485,6 +505,31 @@ export default function CreateListingScreen({ onNavigate }: CreateListingScreenP
             onChangeText={(value) => handleInputChange('postcode', value)}
             placeholder="e.g., YO1 1AA"
           />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>County *</Text>
+          <select
+            style={{
+              width: '100%',
+              padding: '12px',
+              fontSize: '16px',
+              border: '1px solid #E0E0E0',
+              borderRadius: '8px',
+              backgroundColor: '#F5F5F5',
+              marginBottom: '8px',
+              color: '#333'
+            }}
+            value={formData.county}
+            onChange={(e) => handleInputChange('county', e.target.value)}
+          >
+            <option value="">Select County</option>
+            {counties.map((county) => (
+              <option key={county} value={county}>
+                {county}
+              </option>
+            ))}
+          </select>
         </View>
 
         <View style={styles.inputGroup}>
