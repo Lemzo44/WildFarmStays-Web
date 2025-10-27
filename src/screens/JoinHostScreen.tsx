@@ -111,7 +111,7 @@ export default function JoinHostScreen({ onNavigate }: JoinHostScreenProps) {
         <View style={styles.ctaSection}>
           <TouchableOpacity
             style={styles.ctaButton}
-            onPress={() => onNavigate?.('login')}
+            onPress={() => onNavigate?.('register', 'farmer')}
           >
             <Text style={styles.ctaButtonText}>Join as a Host - It's Free!</Text>
           </TouchableOpacity>

@@ -103,7 +103,7 @@ export default function JoinCamperScreen({ onNavigate }: JoinCamperScreenProps) 
         <View style={styles.ctaSection}>
           <TouchableOpacity
             style={styles.ctaButton}
-            onPress={() => onNavigate?.('login')}
+            onPress={() => onNavigate?.('register', 'camper')}
           >
             <Text style={styles.ctaButtonText}>Sign Up Now - It's Free!</Text>
           </TouchableOpacity>
