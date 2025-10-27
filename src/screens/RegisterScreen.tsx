@@ -103,30 +103,28 @@ export default function RegisterScreen({ onNavigate, userRole: initialRole }: Re
       </View>
 
       <View style={styles.card}>
-        {/* Role Selection (if not set from external link) */}
-        {!initialRole && (
-          <View style={styles.roleSelector}>
-            <Text style={styles.roleLabel}>I am a:</Text>
-            <View style={styles.roleButtons}>
-              <TouchableOpacity
-                style={[styles.roleButton, role === 'camper' && styles.roleButtonActive]}
-                onPress={() => setRole('camper')}
-              >
-                <Text style={[styles.roleButtonText, role === 'camper' && styles.roleButtonTextActive]}>
-                  🏕️ Camper
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.roleButton, role === 'farmer' && styles.roleButtonActive]}
-                onPress={() => setRole('farmer')}
-              >
-                <Text style={[styles.roleButtonText, role === 'farmer' && styles.roleButtonTextActive]}>
-                  🚜 Farmer
-                </Text>
-              </TouchableOpacity>
-            </View>
+        {/* Role Selection */}
+        <View style={styles.roleSelector}>
+          <Text style={styles.roleLabel}>I am a:</Text>
+          <View style={styles.roleButtons}>
+            <TouchableOpacity
+              style={[styles.roleButton, role === 'camper' && styles.roleButtonActive]}
+              onPress={() => setRole('camper')}
+            >
+              <Text style={[styles.roleButtonText, role === 'camper' && styles.roleButtonTextActive]}>
+                🏕️ Camper
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.roleButton, role === 'farmer' && styles.roleButtonActive]}
+              onPress={() => setRole('farmer')}
+            >
+              <Text style={[styles.roleButtonText, role === 'farmer' && styles.roleButtonTextActive]}>
+                🚜 Farmer
+              </Text>
+            </TouchableOpacity>
           </View>
-        )}
+        </View>
 
         {/* Personal Information */}
         <Text style={styles.sectionTitle}>Personal Information</Text>
