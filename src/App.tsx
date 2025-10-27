@@ -17,6 +17,7 @@ import EditListingScreen from './screens/EditListingScreen';
 import FarmerRatingScreen from './screens/FarmerRatingScreen';
 import BookingDetailsScreen from './screens/BookingDetailsScreen';
 import FAQsScreen from './screens/FAQsScreen';
+import AboutUsScreen from './screens/AboutUsScreen';
 import TermsScreen from './screens/TermsScreen';
 import PrivacyScreen from './screens/PrivacyScreen';
 import JoinCamperScreen from './screens/JoinCamperScreen';
@@ -42,6 +43,8 @@ function AppContent() {
         return <LandingPage onNavigate={handleNavigate} />;
       case 'login':
         return <LoginScreen onNavigate={handleNavigate} />;
+      case 'about':
+        return <AboutUsScreen onNavigate={handleNavigate} />;
       case 'faqs':
         return <FAQsScreen onNavigate={handleNavigate} />;
       case 'terms':
@@ -86,7 +89,7 @@ function AppContent() {
   };
 
   // Don't show bottom navigation for public pages
-  const publicScreens = ['landing', 'login', 'faqs', 'terms', 'privacy', 'join-camper', 'join-host', 'contact'];
+  const publicScreens = ['landing', 'login', 'about', 'faqs', 'terms', 'privacy', 'join-camper', 'join-host', 'contact'];
   const isPublicScreen = publicScreens.includes(currentScreen);
 
   if (!currentUser && !isPublicScreen) {

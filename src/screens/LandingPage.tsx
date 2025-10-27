@@ -8,20 +8,17 @@ interface LandingPageProps {
 export default function LandingPage({ onNavigate }: LandingPageProps) {
   return (
     <ScrollView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.logo}>WildFarmStays</Text>
-        <TouchableOpacity 
-          style={styles.loginButton}
-          onPress={() => onNavigate?.('login')}
-        >
-          <Text style={styles.loginButtonText}>Login</Text>
-        </TouchableOpacity>
-      </View>
-
       {/* Hero Section */}
       <View style={styles.heroSection}>
-        <Text style={styles.heroTitle}>WildFarmStays</Text>
+        <View style={styles.heroHeader}>
+          <Text style={styles.heroTitle}>WildFarmStays</Text>
+          <TouchableOpacity 
+            style={styles.loginButton}
+            onPress={() => onNavigate?.('login')}
+          >
+            <Text style={styles.loginButtonText}>Login</Text>
+          </TouchableOpacity>
+        </View>
         <Text style={styles.heroSubtitle}>
           Experience authentic farm life in Ireland's countryside
         </Text>
@@ -133,6 +130,9 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
       {/* Footer */}
       <View style={styles.footer}>
         <View style={styles.footerLinks}>
+          <TouchableOpacity onPress={() => onNavigate?.('about')}>
+            <Text style={styles.footerLink}>About Us</Text>
+          </TouchableOpacity>
           <TouchableOpacity onPress={() => onNavigate?.('faqs')}>
             <Text style={styles.footerLink}>FAQs</Text>
           </TouchableOpacity>
@@ -157,44 +157,37 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    paddingTop: 40,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-  },
-  logo: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#2E7D32',
-  },
-  loginButton: {
-    backgroundColor: '#2E7D32',
-    paddingVertical: 10,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-  },
-  loginButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
   heroSection: {
     backgroundColor: '#2E7D32',
     padding: 40,
     paddingTop: 60,
+  },
+  heroHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    width: '100%',
+    marginBottom: 16,
   },
   heroTitle: {
     fontSize: 48,
     fontWeight: 'bold',
     color: '#FFFFFF',
-    marginBottom: 16,
     textAlign: 'center',
+    flex: 1,
+  },
+  loginButton: {
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FFFFFF',
+  },
+  loginButtonText: {
+    color: '#2E7D32',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   heroSubtitle: {
     fontSize: 20,
