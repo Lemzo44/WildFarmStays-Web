@@ -392,14 +392,14 @@ export const MOCK_DATA = {
 
 // Storage keys
 const STORAGE_KEYS = {
-  USERS: 'wildstay_users',
-  LISTINGS: 'wildstay_listings',
-  BOOKINGS: 'wildstay_bookings',
-  REVIEWS: 'wildstay_reviews',
-  MESSAGES: 'wildstay_messages',
-  FAVORITES: 'wildstay_favorites',
-  FARMERRATINGS: 'wildstay_farmer_ratings',
-  CURRENT_USER: 'wildstay_current_user',
+  USERS: 'users',
+  LISTINGS: 'listings',
+  BOOKINGS: 'bookings',
+  REVIEWS: 'reviews',
+  MESSAGES: 'messages',
+  FAVORITES: 'favorites',
+  FARMERRATINGS: 'farmer_ratings',
+  CURRENT_USER: 'currentUser',
 };
 
 // Initialize local storage with mock data
