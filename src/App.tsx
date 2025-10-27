@@ -24,11 +24,20 @@ import PrivacyScreen from './screens/PrivacyScreen';
 import JoinCamperScreen from './screens/JoinCamperScreen';
 import JoinHostScreen from './screens/JoinHostScreen';
 import ContactUsScreen from './screens/ContactUsScreen';
+import AdminDashboard from './screens/AdminDashboard';
+import UserManagement from './screens/UserManagement';
+import UserDetails from './screens/UserDetails';
+import ListingManagement from './screens/ListingManagement';
+import BookingManagement from './screens/BookingManagement';
+import AdminBookingDetails from './screens/AdminBookingDetails';
+import SupportTickets from './screens/SupportTickets';
+import TicketDetails from './screens/TicketDetails';
+import ReviewsManagement from './screens/ReviewsManagement';
 import BottomNavigation from './components/BottomNavigation';
 import './App.css';
 
 function AppContent() {
-  const { currentUser } = useAuth();
+  const { currentUser, isAdmin } = useAuth();
   const [currentScreen, setCurrentScreen] = useState('landing');
   const [screenData, setScreenData] = useState<any>(null);
 
@@ -86,6 +95,27 @@ function AppContent() {
         return <FarmerRatingScreen onNavigate={handleNavigate} />;
       case 'booking-details':
         return <BookingDetailsScreen booking={screenData} onNavigate={handleNavigate} />;
+      
+      // Admin screens
+      case 'admin-dashboard':
+        return <AdminDashboard onNavigate={handleNavigate} />;
+      case 'user-management':
+        return <UserManagement onNavigate={handleNavigate} />;
+      case 'user-details':
+        return <UserDetails user={screenData} onNavigate={handleNavigate} />;
+      case 'listing-management':
+        return <ListingManagement onNavigate={handleNavigate} />;
+      case 'booking-management':
+        return <BookingManagement onNavigate={handleNavigate} />;
+      case 'admin-booking-details':
+        return <AdminBookingDetails booking={screenData} onNavigate={handleNavigate} />;
+      case 'support-tickets':
+        return <SupportTickets onNavigate={handleNavigate} />;
+      case 'ticket-details':
+        return <TicketDetails ticket={screenData} onNavigate={handleNavigate} />;
+      case 'reviews-management':
+        return <ReviewsManagement onNavigate={handleNavigate} />;
+      
       default:
         return currentUser ? <HomeScreen onNavigate={handleNavigate} /> : <LandingPage onNavigate={handleNavigate} />;
     }
@@ -94,6 +124,15 @@ function AppContent() {
   // Don't show bottom navigation for public pages
   const publicScreens = ['landing', 'login', 'register', 'about', 'faqs', 'terms', 'privacy', 'join-camper', 'join-host', 'contact'];
   const isPublicScreen = publicScreens.includes(currentScreen);
+  
+  // Admin screens require admin access
+  const adminScreens = ['admin-dashboard', 'user-management', 'user-details', 'listing-management', 'booking-management', 'admin-booking-details', 'support-tickets', 'ticket-details', 'reviews-management'];
+  const isAdminScreen = adminScreens.includes(currentScreen);
+
+  // Redirect if trying to access admin screens without admin access
+  if (isAdminScreen && !isAdmin()) {
+    return <LandingPage onNavigate={handleNavigate} />;
+  }
 
   if (!currentUser && !isPublicScreen) {
     return <LandingPage onNavigate={handleNavigate} />;

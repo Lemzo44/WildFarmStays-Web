@@ -9,13 +9,18 @@ interface HomeScreenProps {
 }
 
 export default function HomeScreen({ onNavigate }: HomeScreenProps = {}) {
-  const { currentUser, logout } = useAuth();
+  const { currentUser, logout, isAdmin } = useAuth();
   const [recentStays, setRecentStays] = useState([]);
   const [upcomingStays, setUpcomingStays] = useState([]);
   const [favoriteFarms, setFavoriteFarms] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Redirect admins to admin dashboard
+    if (isAdmin()) {
+      onNavigate?.('admin-dashboard');
+      return;
+    }
     loadData();
   }, []);
 

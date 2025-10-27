@@ -45,6 +45,20 @@ export const MOCK_DATA = {
       subscriptionRenewalDate: '2024-01-01',
       joinDate: '2023-12-01',
     },
+    {
+      id: '4',
+      email: 'admin@wildfarmstays.com',
+      password: 'admin123',
+      firstName: 'Admin',
+      lastName: 'User',
+      role: 'admin',
+      phone: '+353123456789',
+      verified: true,
+      subscriptionStatus: 'active',
+      joinDate: '2024-01-01',
+      isAdmin: true,
+      adminLevel: 2,
+    },
   ],
   listings: [
     {

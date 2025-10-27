@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { LocalStorageService } from '../services/LocalStorageService';
+import { useAuth } from '../contexts/AuthContext';
 
 interface ContactUsScreenProps {
   onNavigate?: (screen: string) => void;
 }
 
 export default function ContactUsScreen({ onNavigate }: ContactUsScreenProps) {
+  const { currentUser } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -13,20 +16,40 @@ export default function ContactUsScreen({ onNavigate }: ContactUsScreenProps) {
     message: ''
   });
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!formData.name || !formData.email || !formData.message) {
       Alert.alert('Error', 'Please fill in all required fields');
       return;
     }
 
-    // In a real app, this would send data to a server
-    Alert.alert(
-      'Message Sent!',
-      'Thank you for contacting us. We will get back to you as soon as possible.',
-      [{ text: 'OK', onPress: () => {
-        setFormData({ name: '', email: '', subject: '', message: '' });
-      }}]
-    );
+    try {
+      // Create support ticket
+      const ticket = {
+        id: Date.now().toString(),
+        subject: formData.subject || 'Contact Us Inquiry',
+        message: formData.message,
+        category: 'General',
+        priority: 'normal',
+        status: 'open',
+        userName: formData.name,
+        userEmail: formData.email,
+        userId: currentUser?.id || 'guest',
+        createdAt: new Date().toISOString(),
+      };
+
+      await LocalStorageService.save('tickets', ticket);
+      
+      Alert.alert(
+        'Message Sent!',
+        'Thank you for contacting us. We will get back to you as soon as possible.',
+        [{ text: 'OK', onPress: () => {
+          setFormData({ name: '', email: '', subject: '', message: '' });
+        }}]
+      );
+    } catch (error) {
+      console.error('Error creating ticket:', error);
+      Alert.alert('Error', 'Failed to send message. Please try again.');
+    }
   };
 
   return (

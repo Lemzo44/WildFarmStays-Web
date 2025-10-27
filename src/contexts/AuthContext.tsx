@@ -4,7 +4,7 @@ import { initializeLocalStorage } from '../services/MockDataService';
 interface User {
   id: string;
   email: string;
-  role: 'camper' | 'farmer';
+  role: 'camper' | 'farmer' | 'admin';
   name?: string;
   firstName?: string;
   lastName?: string;
@@ -12,13 +12,18 @@ interface User {
   farmName?: string;
   farmAddress?: string;
   postcode?: string;
+  isAdmin?: boolean;
+  adminLevel?: number;
 }
 
 interface AuthContextType {
   currentUser: User | null;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
-  register: (email: string, password: string, role: 'camper' | 'farmer', userData?: Partial<User>) => Promise<boolean>;
+  register: (email: string, password: string, role: 'camper' | 'farmer' | 'admin', userData?: Partial<User>) => Promise<boolean>;
+  isAdmin: () => boolean;
+  isCamper: () => boolean;
+  isFarmer: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -87,11 +92,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         verified: true,
         subscriptionStatus: 'expired',
         subscriptionType: 'monthly',
-        subscriptionStartDate: '2023-12-01',
-        subscriptionEndDate: '2024-01-01',
-        subscriptionRenewalDate: '2024-01-01',
-        joinDate: '2023-12-01',
-      },
+      subscriptionStartDate: '2023-12-01',
+      subscriptionEndDate: '2024-01-01',
+      subscriptionRenewalDate: '2024-01-01',
+      joinDate: '2023-12-01',
+    },
+    {
+      id: '4',
+      email: 'admin@wildfarmstays.com',
+      password: 'admin123',
+      firstName: 'Admin',
+      lastName: 'User',
+      role: 'admin' as const,
+      phone: '+353123456789',
+      verified: true,
+      subscriptionStatus: 'active',
+      joinDate: '2024-01-01',
+      isAdmin: true,
+      adminLevel: 2,
+    },
     ];
 
     const user = mockUsers.find(u => u.email === email && u.password === password);
@@ -103,13 +122,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return false;
   };
 
-  const register = async (email: string, password: string, role: 'camper' | 'farmer', userData?: Partial<User>): Promise<boolean> => {
+  const register = async (email: string, password: string, role: 'camper' | 'farmer' | 'admin', userData?: Partial<User>): Promise<boolean> => {
     // Simulate registration
     const newUser: User = {
       id: Date.now().toString(),
       email,
       role,
       name: email.split('@')[0],
+      isAdmin: role === 'admin',
+      adminLevel: role === 'admin' ? 2 : undefined,
       ...userData
     };
     
@@ -129,11 +150,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('currentUser');
   };
 
+  const isAdmin = () => {
+    return currentUser?.role === 'admin' || currentUser?.isAdmin === true;
+  };
+
+  const isCamper = () => {
+    return currentUser?.role === 'camper';
+  };
+
+  const isFarmer = () => {
+    return currentUser?.role === 'farmer';
+  };
+
   const value = {
     currentUser,
     login,
     logout,
     register,
+    isAdmin,
+    isCamper,
+    isFarmer,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

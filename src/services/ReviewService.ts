@@ -112,7 +112,30 @@ export class ReviewService {
       throw new Error('Failed to get user reviews');
     }
   }
-}
 
+  /**
+   * Get all reviews (admin function)
+   */
+  static async getAllReviews(): Promise<Review[]> {
+    try {
+      return await LocalStorageService.getAll('reviews');
+    } catch (error) {
+      console.error('Error getting all reviews:', error);
+      throw new Error('Failed to get all reviews');
+    }
+  }
+
+  /**
+   * Delete a review
+   */
+  static async deleteReview(reviewId: string): Promise<void> {
+    try {
+      await LocalStorageService.delete('reviews', reviewId);
+    } catch (error) {
+      console.error('Error deleting review:', error);
+      throw new Error('Failed to delete review');
+    }
+  }
+}
 
 

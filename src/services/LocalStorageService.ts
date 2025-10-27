@@ -27,7 +27,17 @@ export class LocalStorageService {
     const filteredItems = items.filter(item => item.id !== id);
     localStorage.setItem(collection, JSON.stringify(filteredItems));
   }
-}
 
+  static async getItem(collection: string, key: string): Promise<any | null> {
+    const keyWithPrefix = `${collection}_${key}`;
+    const data = localStorage.getItem(keyWithPrefix);
+    return data ? JSON.parse(data) : null;
+  }
+
+  static async setItem(collection: string, key: string, value: any): Promise<void> {
+    const keyWithPrefix = `${collection}_${key}`;
+    localStorage.setItem(keyWithPrefix, JSON.stringify(value));
+  }
+}
 
 
