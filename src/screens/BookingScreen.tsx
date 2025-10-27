@@ -247,8 +247,18 @@ export default function BookingScreen({ listing, onNavigate }: BookingScreenProp
       const result = await BookingService.createBooking(bookingData);
       
       // Show success and navigate
-      alert('✅ Booking request sent successfully!');
-      onNavigate?.('home');
+      Alert.alert(
+        '✅ Success!',
+        'Booking request sent successfully!',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              onNavigate?.('home');
+            }
+          }
+        ]
+      );
     } catch (error) {
       console.error('Error creating booking:', error);
       setError('Failed to create booking');
