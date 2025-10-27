@@ -8,6 +8,17 @@ interface LandingPageProps {
 export default function LandingPage({ onNavigate }: LandingPageProps) {
   return (
     <ScrollView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.logo}>WildFarmStays</Text>
+        <TouchableOpacity 
+          style={styles.loginButton}
+          onPress={() => onNavigate?.('login')}
+        >
+          <Text style={styles.loginButtonText}>Login</Text>
+        </TouchableOpacity>
+      </View>
+
       {/* Hero Section */}
       <View style={styles.heroSection}>
         <Text style={styles.heroTitle}>WildFarmStays</Text>
@@ -73,28 +84,34 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
             <View style={styles.stepNumber}>
               <Text style={styles.stepNumberText}>1</Text>
             </View>
-            <Text style={styles.stepTitle}>Browse Farms</Text>
-            <Text style={styles.stepDescription}>
-              Search through verified farm stays across Ireland
-            </Text>
+            <View style={styles.stepContent}>
+              <Text style={styles.stepTitle}>Browse Farms</Text>
+              <Text style={styles.stepDescription}>
+                Search through verified farm stays across Ireland
+              </Text>
+            </View>
           </View>
           <View style={styles.stepCard}>
             <View style={styles.stepNumber}>
               <Text style={styles.stepNumberText}>2</Text>
             </View>
-            <Text style={styles.stepTitle}>Book Your Stay</Text>
-            <Text style={styles.stepDescription}>
-              Choose dates and secure your farm experience
-            </Text>
+            <View style={styles.stepContent}>
+              <Text style={styles.stepTitle}>Book Your Stay</Text>
+              <Text style={styles.stepDescription}>
+                Choose dates and secure your farm experience
+              </Text>
+            </View>
           </View>
           <View style={styles.stepCard}>
             <View style={styles.stepNumber}>
               <Text style={styles.stepNumberText}>3</Text>
             </View>
-            <Text style={styles.stepTitle}>Connect & Enjoy</Text>
-            <Text style={styles.stepDescription}>
-              Message farmers and experience authentic rural life
-            </Text>
+            <View style={styles.stepContent}>
+              <Text style={styles.stepTitle}>Connect & Enjoy</Text>
+              <Text style={styles.stepDescription}>
+                Message farmers and experience authentic rural life
+              </Text>
+            </View>
           </View>
         </View>
       </View>
@@ -139,6 +156,32 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    paddingTop: 40,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  logo: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#2E7D32',
+  },
+  loginButton: {
+    backgroundColor: '#2E7D32',
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+  },
+  loginButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   heroSection: {
     backgroundColor: '#2E7D32',
@@ -236,6 +279,7 @@ const styles = StyleSheet.create({
     padding: 24,
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 16,
   },
   stepNumber: {
     width: 48,
@@ -251,15 +295,19 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
   },
+  stepContent: {
+    flex: 1,
+  },
   stepTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 4,
+    marginBottom: 8,
   },
   stepDescription: {
     fontSize: 14,
     color: '#666',
+    lineHeight: 20,
   },
   ctaSection: {
     backgroundColor: '#E8F5E8',
