@@ -18,11 +18,32 @@ export default function RegisterScreen({ onNavigate, userRole: initialRole }: Re
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [phone, setPhone] = useState('');
+  
+  // Password validation state
+  const [passwordError, setPasswordError] = useState('');
 
   // Farmer-specific fields
   const [farmName, setFarmName] = useState('');
   const [farmAddress, setFarmAddress] = useState('');
   const [postcode, setPostcode] = useState('');
+
+  // Real-time password validation
+  const validatePasswords = (pwd = password, confirmPwd = confirmPassword) => {
+    if (!confirmPwd) {
+      setPasswordError('');
+      return true;
+    }
+    if (pwd !== confirmPwd) {
+      setPasswordError('Passwords do not match');
+      return false;
+    }
+    if (pwd.length < 6) {
+      setPasswordError('Password must be at least 6 characters');
+      return false;
+    }
+    setPasswordError('');
+    return true;
+  };
 
   const handleSubmit = async () => {
     // Validation
@@ -31,13 +52,8 @@ export default function RegisterScreen({ onNavigate, userRole: initialRole }: Re
       return;
     }
 
-    if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
-      return;
-    }
-
-    if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters long');
+    if (!validatePasswords()) {
+      Alert.alert('Error', passwordError);
       return;
     }
 
@@ -189,19 +205,26 @@ export default function RegisterScreen({ onNavigate, userRole: initialRole }: Re
           style={styles.input}
           placeholder="At least 6 characters"
           value={password}
-          onChangeText={setPassword}
+          onChangeText={(text) => {
+            setPassword(text);
+            validatePasswords();
+          }}
           secureTextEntry
         />
 
         <Text style={styles.label}>Confirm Password *</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, passwordError && styles.inputError]}
           placeholder="Re-enter your password"
           value={confirmPassword}
-          onChangeText={setConfirmPassword}
+          onChangeText={(text) => {
+            setConfirmPassword(text);
+            validatePasswords();
+          }}
           secureTextEntry
           onSubmitEditing={handleSubmit}
         />
+        {passwordError ? <Text style={styles.errorText}>{passwordError}</Text> : null}
 
         <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
           <Text style={styles.submitButtonText}>Create Account</Text>
@@ -318,6 +341,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     backgroundColor: '#FAFAFA',
     color: '#333',
+  },
+  inputError: {
+    borderColor: '#D32F2F',
+  },
+  errorText: {
+    color: '#D32F2F',
+    fontSize: 12,
+    marginBottom: 8,
+    marginTop: -12,
   },
   submitButton: {
     backgroundColor: '#2E7D32',
