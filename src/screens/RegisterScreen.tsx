@@ -207,7 +207,7 @@ export default function RegisterScreen({ onNavigate, userRole: initialRole }: Re
           value={password}
           onChangeText={(text) => {
             setPassword(text);
-            validatePasswords();
+            setTimeout(() => validatePasswords(text, confirmPassword), 0);
           }}
           secureTextEntry
         />
@@ -219,7 +219,7 @@ export default function RegisterScreen({ onNavigate, userRole: initialRole }: Re
           value={confirmPassword}
           onChangeText={(text) => {
             setConfirmPassword(text);
-            validatePasswords();
+            setTimeout(() => validatePasswords(password, text), 0);
           }}
           secureTextEntry
           onSubmitEditing={handleSubmit}

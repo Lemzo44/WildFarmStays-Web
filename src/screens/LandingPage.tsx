@@ -121,7 +121,7 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
         </Text>
         <TouchableOpacity 
           style={styles.ctaButton}
-          onPress={() => onNavigate?.('join-camper')}
+          onPress={() => onNavigate?.('register', 'camper')}
         >
           <Text style={styles.ctaButtonText}>Get Started for Free</Text>
         </TouchableOpacity>
