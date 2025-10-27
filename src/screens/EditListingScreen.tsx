@@ -57,6 +57,7 @@ export default function EditListingScreen({ listing, onNavigate }: EditListingSc
   const extractedListing = listing?.listing || listing;
   const currentListing = extractedListing || mockListing;
   const isFromAdmin = listing?.fromAdmin || false;
+  const viewOnly = listing?.viewOnly || false;
 
   useEffect(() => {
     // Populate form with existing listing data
@@ -478,6 +479,7 @@ export default function EditListingScreen({ listing, onNavigate }: EditListingSc
             onChangeText={(value) => handleInputChange('title', value)}
             placeholder="e.g., Green Valley Farm"
             maxLength={100}
+            editable={!viewOnly}
           />
         </View>
 
@@ -491,6 +493,7 @@ export default function EditListingScreen({ listing, onNavigate }: EditListingSc
             multiline
             numberOfLines={4}
             maxLength={1000}
+            editable={!viewOnly}
           />
         </View>
 
@@ -786,32 +789,75 @@ export default function EditListingScreen({ listing, onNavigate }: EditListingSc
         )}
       </View>
 
-      <View style={styles.actionButtons}>
-        <TouchableOpacity 
-          style={[styles.submitButton, loading && styles.submitButtonDisabled]}
-          onPress={handleSubmit}
-          disabled={loading}
-        >
-          <Text style={styles.submitButtonText}>
-            {loading ? 'Updating...' : 'Update Listing'}
-          </Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.cancelButton}
-          onPress={() => onNavigate?.('listings')}
-        >
-          <Text style={styles.cancelButtonText}>Cancel</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.deleteButton}
-          onPress={handleDelete}
-          disabled={loading}
-        >
-          <Text style={styles.deleteButtonText}>Delete Listing</Text>
-        </TouchableOpacity>
-      </View>
+      {viewOnly ? (
+        <View style={styles.actionButtons}>
+          <TouchableOpacity 
+            style={styles.approveButtonAdmin}
+            onPress={async () => {
+              if (currentListing) {
+                const listing = await LocalStorageService.getById('listings', currentListing.id);
+                if (listing) {
+                  listing.availability = 'available';
+                  await LocalStorageService.save('listings', listing);
+                  alert('Listing approved successfully!');
+                  onNavigate?.('listing-management');
+                }
+              }
+            }}
+          >
+            <Text style={styles.approveButtonTextAdmin}>✓ Approve Listing</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.rejectButtonAdmin}
+            onPress={async () => {
+              if (window.confirm('Are you sure you want to reject this listing?')) {
+                if (currentListing) {
+                  await LocalStorageService.delete('listings', currentListing.id);
+                  alert('Listing rejected');
+                  onNavigate?.('listing-management');
+                }
+              }
+            }}
+          >
+            <Text style={styles.rejectButtonTextAdmin}>✕ Reject Listing</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.backButtonView}
+            onPress={() => onNavigate?.('listing-management')}
+          >
+            <Text style={styles.backButtonTextView}>← Back to Listings</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <View style={styles.actionButtons}>
+          <TouchableOpacity 
+            style={[styles.submitButton, loading && styles.submitButtonDisabled]}
+            onPress={handleSubmit}
+            disabled={loading}
+          >
+            <Text style={styles.submitButtonText}>
+              {loading ? 'Updating...' : 'Update Listing'}
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.cancelButton}
+            onPress={() => onNavigate?.('listings')}
+          >
+            <Text style={styles.cancelButtonText}>Cancel</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.deleteButton}
+            onPress={handleDelete}
+            disabled={loading}
+          >
+            <Text style={styles.deleteButtonText}>Delete Listing</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Error Snackbar */}
       {showError && (
@@ -1034,6 +1080,41 @@ const styles = StyleSheet.create({
   },
   deleteButtonText: {
     color: '#D32F2F',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  approveButtonAdmin: {
+    backgroundColor: '#2E7D32',
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  approveButtonTextAdmin: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  rejectButtonAdmin: {
+    backgroundColor: '#FFEBEE',
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  rejectButtonTextAdmin: {
+    color: '#D32F2F',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  backButtonView: {
+    backgroundColor: '#F5F5F5',
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  backButtonTextView: {
+    color: '#333',
     fontSize: 16,
     fontWeight: '600',
   },

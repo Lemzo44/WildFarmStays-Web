@@ -272,6 +272,12 @@ export default function ListingManagement({ onNavigate }: ListingManagementProps
               {listing.availability === 'pending' && (
                 <>
                   <TouchableOpacity
+                    style={[styles.actionButton, styles.viewButton]}
+                    onPress={() => onNavigate?.('edit-listing', { listing, fromAdmin: true, viewOnly: true })}
+                  >
+                    <Text style={[styles.actionButtonText, styles.viewButtonText]}>View Details</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
                     style={[styles.actionButton, styles.approveButton]}
                     onPress={() => handleApproveListing(listing.id)}
                   >
@@ -482,6 +488,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     textAlign: 'center',
+  },
+  viewButton: {
+    backgroundColor: '#E3F2FD',
+  },
+  viewButtonText: {
+    color: '#1976D2',
   },
   approveButton: {
     backgroundColor: '#2E7D32',
