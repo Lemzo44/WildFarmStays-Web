@@ -19,6 +19,8 @@ export default function EditListingScreen({ listing, onNavigate }: EditListingSc
     address: '',
     postcode: '',
     location: '',
+    parkingLocation: '',
+    cancellationPolicy: '',
     coordinates: null as { latitude: number; longitude: number } | null,
     amenities: [] as string[],
     restrictions: [] as string[],
@@ -68,6 +70,8 @@ export default function EditListingScreen({ listing, onNavigate }: EditListingSc
       address: currentListing.address || '',
       postcode: currentListing.postcode || '',
       location: currentListing.location || '',
+      parkingLocation: currentListing.parkingLocation || '',
+      cancellationPolicy: currentListing.cancellationPolicy || '',
       coordinates: currentListing.coordinates || null,
       amenities: currentListing.amenities || [],
       restrictions: currentListing.restrictions || [],
@@ -370,6 +374,8 @@ export default function EditListingScreen({ listing, onNavigate }: EditListingSc
         address: formData.address.trim(),
         postcode: formData.postcode.trim(),
         location: formData.location.trim(),
+        parkingLocation: formData.parkingLocation.trim(),
+        cancellationPolicy: formData.cancellationPolicy.trim(),
         coordinates: formData.coordinates,
         latitude: formData.coordinates?.latitude || currentListing.latitude || 54.7024,
         longitude: formData.coordinates?.longitude || currentListing.longitude || -3.2766,
@@ -571,6 +577,28 @@ export default function EditListingScreen({ listing, onNavigate }: EditListingSc
             value={formData.postcode}
             onChangeText={(value) => handleInputChange('postcode', value)}
             placeholder="e.g., YO1 1AA"
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Parking Location *</Text>
+          <TextInput
+            style={styles.textInput}
+            value={formData.parkingLocation}
+            onChangeText={(value) => handleInputChange('parkingLocation', value)}
+            placeholder="e.g., Designated field, Near farm gate, Secure parking area"
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Cancellation Policy</Text>
+          <TextInput
+            style={styles.textArea}
+            value={formData.cancellationPolicy}
+            onChangeText={(value) => handleInputChange('cancellationPolicy', value)}
+            placeholder="e.g., Free cancellation up to 24 hours before check-in"
+            multiline
+            numberOfLines={3}
           />
         </View>
 
