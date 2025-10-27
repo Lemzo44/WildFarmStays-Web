@@ -87,6 +87,7 @@ export default function LoginScreen({ onNavigate }: LoginScreenProps) {
           onChangeText={setEmail}
           keyboardType="email-address"
           autoCapitalize="none"
+          returnKeyType="next"
         />
 
         <TextInput
@@ -95,6 +96,8 @@ export default function LoginScreen({ onNavigate }: LoginScreenProps) {
           value={password}
           onChangeText={setPassword}
           secureTextEntry
+          returnKeyType="go"
+          onSubmitEditing={handleSubmit}
         />
 
         <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
