@@ -19,6 +19,7 @@ export default function CreateListingScreen({ onNavigate }: CreateListingScreenP
     postcode: '',
     location: '',
     parkingLocation: '',
+    cancellationPolicy: '',
     coordinates: null as { latitude: number; longitude: number } | null,
     amenities: [] as string[],
     restrictions: [] as string[],
@@ -497,6 +498,18 @@ export default function CreateListingScreen({ onNavigate }: CreateListingScreenP
             value={formData.parkingLocation}
             onChangeText={(value) => handleInputChange('parkingLocation', value)}
             placeholder="e.g., Designated field, Near farm gate, Secure parking area"
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Cancellation Policy</Text>
+          <TextInput
+            style={styles.textArea}
+            value={formData.cancellationPolicy}
+            onChangeText={(value) => handleInputChange('cancellationPolicy', value)}
+            placeholder="e.g., Free cancellation up to 24 hours before check-in"
+            multiline
+            numberOfLines={3}
           />
         </View>
 

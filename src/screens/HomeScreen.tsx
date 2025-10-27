@@ -48,7 +48,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps = {}) {
 
       // Filter based on user role
       if (currentUser?.role === 'camper') {
-        setUpcomingStays(userBookings.filter((b: any) => b.status === 'upcoming' || b.status === 'confirmed'));
+        setUpcomingStays(userBookings.filter((b: any) => b.status === 'upcoming' || b.status === 'confirmed' || b.status === 'pending'));
         setRecentStays(userBookings.filter((b: any) => b.status === 'completed'));
         setFavoriteFarms(mockFavorites);
       }
