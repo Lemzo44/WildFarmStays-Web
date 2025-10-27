@@ -71,6 +71,7 @@ export default function CreateListingScreen({ onNavigate }: CreateListingScreenP
     'Wildlife guides',
     'Rustic benches',
     'Swimming',
+  ];
 
   const availableRestrictions = [
     'No Dogs', 'No Children', 'No Fires', 'No Smoking', 'No Alcohol',
@@ -457,7 +458,7 @@ export default function CreateListingScreen({ onNavigate }: CreateListingScreenP
             style={styles.textInput}
             value={formData.price}
             onChangeText={(value) => handleInputChange('price', value)}
-            placeholder="25"
+            placeholder="0"
             keyboardType="numeric"
           />
         </View>
