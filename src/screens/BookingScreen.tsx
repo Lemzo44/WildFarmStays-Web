@@ -179,8 +179,8 @@ export default function BookingScreen({ listing, onNavigate }: BookingScreenProp
       setCheckingAvailability(true);
       const availability = await BookingService.checkAvailability(
         currentListing.id,
-        checkInDate,
-        checkOutDate
+        checkInDate.toISOString().split('T')[0],
+        checkOutDate.toISOString().split('T')[0]
       );
       
       setIsAvailable(availability.available);
@@ -233,27 +233,22 @@ export default function BookingScreen({ listing, onNavigate }: BookingScreenProp
       setLoading(true);
       
       const bookingData = {
-        camperId: currentUser.id,
         listingId: currentListing.id,
+        listingTitle: currentListing.title,
+        camperId: currentUser.id,
+        camperName: currentUser.name || currentUser.email.split('@')[0],
         farmerId: currentListing.farmerId,
-        checkInDate: checkInDate.toISOString().split('T')[0],
-        checkOutDate: checkOutDate.toISOString().split('T')[0],
-        guests,
-        specialRequests,
+        startDate: checkInDate.toISOString().split('T')[0],
+        endDate: checkOutDate.toISOString().split('T')[0],
         totalPrice: calculateTotal(),
-        status: 'pending'
+        status: 'pending' as const
       };
 
       const result = await BookingService.createBooking(bookingData);
       
-      if (result.success) {
-        Alert.alert('Success', 'Booking request sent successfully!');
-        // Navigate back or to bookings screen
-        onNavigate?.('home');
-      } else {
-        setError(result.message || 'Failed to create booking');
-        setShowError(true);
-      }
+      alert('✅ Booking request sent successfully!');
+      // Navigate back
+      onNavigate?.('home');
     } catch (error) {
       console.error('Error creating booking:', error);
       setError('Failed to create booking');
