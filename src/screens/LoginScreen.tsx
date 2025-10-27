@@ -2,7 +2,11 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 
-export default function LoginScreen() {
+interface LoginScreenProps {
+  onNavigate?: (screen: string) => void;
+}
+
+export default function LoginScreen({ onNavigate }: LoginScreenProps) {
   const { login, register } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -25,6 +29,9 @@ export default function LoginScreen() {
 
       if (!success) {
         Alert.alert('Error', isRegistering ? 'Registration failed' : 'Login failed');
+      } else {
+        // Navigate to home after successful login/registration
+        onNavigate?.('home');
       }
     } catch (error) {
       Alert.alert('Error', 'An error occurred');
@@ -35,6 +42,9 @@ export default function LoginScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
+        <TouchableOpacity onPress={() => onNavigate?.('landing')} style={styles.backButton}>
+          <Text style={styles.backButtonText}>← Back</Text>
+        </TouchableOpacity>
         <Text style={styles.title}>WildFarmStays</Text>
         <Text style={styles.subtitle}>
           {isRegistering ? 'Create your account' : 'Welcome back!'}
@@ -129,6 +139,14 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 16,
     color: '#666',
+  },
+  backButton: {
+    marginBottom: 16,
+  },
+  backButtonText: {
+    color: '#2E7D32',
+    fontSize: 16,
+    fontWeight: '600',
   },
   card: {
     backgroundColor: '#FFFFFF',
