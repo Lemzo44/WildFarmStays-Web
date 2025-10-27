@@ -811,16 +811,38 @@ export default function EditListingScreen({ listing, onNavigate }: EditListingSc
           <TouchableOpacity 
             style={styles.rejectButtonAdmin}
             onPress={async () => {
-              if (window.confirm('Are you sure you want to reject this listing?')) {
+              // Prompt for rejection reason
+              const rejectionReason = window.prompt('Please provide a reason for rejection and any recommendations for the farmer:');
+              
+              if (rejectionReason && rejectionReason.trim()) {
                 if (currentListing) {
-                  await LocalStorageService.delete('listings', currentListing.id);
-                  alert('Listing rejected');
-                  onNavigate?.('listing-management');
+                  // Store rejection reason with the listing before deleting
+                  const listing = await LocalStorageService.getById('listings', currentListing.id);
+                  if (listing) {
+                    listing.rejectionReason = rejectionReason;
+                    listing.rejectedAt = new Date().toISOString();
+                    await LocalStorageService.save('listings', listing);
+                    
+                    // Now delete the listing
+                    await LocalStorageService.delete('listings', currentListing.id);
+                    alert('Listing rejected and farmer notified');
+                    onNavigate?.('listing-management');
+                  }
                 }
+              } else if (rejectionReason !== null) {
+                // User pressed OK without entering a reason
+                alert('Please provide a reason for rejection. The farmer needs to know why their listing was not approved.');
               }
             }}
           >
             <Text style={styles.rejectButtonTextAdmin}>✕ Reject Listing</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.messageButtonAdmin}
+            onPress={() => onNavigate?.('messages')}
+          >
+            <Text style={styles.messageButtonTextAdmin}>💬 Message Farmer</Text>
           </TouchableOpacity>
           
           <TouchableOpacity 
@@ -1102,6 +1124,17 @@ const styles = StyleSheet.create({
   },
   rejectButtonTextAdmin: {
     color: '#D32F2F',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  messageButtonAdmin: {
+    backgroundColor: '#E3F2FD',
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  messageButtonTextAdmin: {
+    color: '#1976D2',
     fontSize: 16,
     fontWeight: 'bold',
   },

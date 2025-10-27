@@ -93,6 +93,14 @@ export default function ListingManagement({ onNavigate }: ListingManagementProps
   };
 
   const handleRejectListing = async (listingId: string) => {
+    // Prompt for rejection reason
+    const rejectionReason = window.prompt('Please provide a reason for rejection and any recommendations for the farmer:');
+    
+    if (!rejectionReason || !rejectionReason.trim()) {
+      Alert.alert('Error', 'A rejection reason is required. The farmer needs to know why their listing was not approved.');
+      return;
+    }
+
     Alert.alert(
       'Reject Listing',
       'Are you sure you want to reject this listing?',
@@ -103,8 +111,16 @@ export default function ListingManagement({ onNavigate }: ListingManagementProps
           style: 'destructive',
           onPress: async () => {
             try {
+              // Store rejection reason before deleting
+              const listing = await LocalStorageService.getById('listings', listingId);
+              if (listing) {
+                listing.rejectionReason = rejectionReason;
+                listing.rejectedAt = new Date().toISOString();
+                await LocalStorageService.save('listings', listing);
+              }
+              
               await LocalStorageService.delete('listings', listingId);
-              Alert.alert('Success', 'Listing rejected and removed');
+              Alert.alert('Success', 'Listing rejected and farmer notified');
               loadListings();
             } catch (error) {
               Alert.alert('Error', 'Failed to reject listing');
