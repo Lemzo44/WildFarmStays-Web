@@ -58,9 +58,14 @@ export default function FAQsScreen({ onNavigate }: FAQsScreenProps) {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => onNavigate?.('landing')} style={styles.backButton}>
-          <Text style={styles.backButtonText}>← Back</Text>
-        </TouchableOpacity>
+        <View style={styles.headerButtons}>
+          <TouchableOpacity onPress={() => onNavigate?.('landing')} style={styles.backButton}>
+            <Text style={styles.backButtonText}>← Back</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => onNavigate?.('landing')} style={styles.homeButton}>
+            <Text style={styles.homeButtonText}>Home</Text>
+          </TouchableOpacity>
+        </View>
         <Text style={styles.title}>Frequently Asked Questions</Text>
       </View>
 
@@ -109,11 +114,28 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: 40,
   },
-  backButton: {
+  headerButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 16,
+  },
+  backButton: {
+    flex: 1,
   },
   backButtonText: {
     color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  homeButton: {
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+  },
+  homeButtonText: {
+    color: '#2E7D32',
     fontSize: 16,
     fontWeight: '600',
   },
