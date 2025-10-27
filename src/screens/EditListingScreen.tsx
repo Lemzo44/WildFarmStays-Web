@@ -359,6 +359,9 @@ export default function EditListingScreen({ listing, onNavigate }: EditListingSc
     try {
       setLoading(true);
       
+      // Check if this was a rejected listing being resubmitted
+      const isResubmission = currentListing.availability === 'rejected';
+      
       const updatedListingData = {
         ...currentListing,
         title: formData.title.trim(),
@@ -380,12 +383,20 @@ export default function EditListingScreen({ listing, onNavigate }: EditListingSc
         checkInTime: formData.checkInTime,
         checkOutTime: formData.checkOutTime,
         blackoutDates: formData.blackoutDates,
+        // If resubmitting a rejected listing, set to pending
+        availability: isResubmission ? 'pending' : currentListing.availability,
+        // Clear rejection info if resubmitting
+        ...(isResubmission && { rejectionReason: undefined, rejectedAt: undefined }),
         updatedAt: new Date().toISOString(),
       };
 
       await LocalStorageService.save('listings', updatedListingData);
       
-      alert('Farm listing updated successfully!');
+      if (isResubmission) {
+        alert('Listing resubmitted successfully! It will be reviewed by our admin team before going live.');
+      } else {
+        alert('Farm listing updated successfully!');
+      }
       onNavigate?.('listings');
     } catch (error) {
       console.error('Error updating listing:', error);

@@ -49,6 +49,7 @@ export default function ListingManagement({ onNavigate }: ListingManagementProps
           if (filterStatus === 'pending') return l.availability === 'pending';
           if (filterStatus === 'available') return l.availability === 'available';
           if (filterStatus === 'suspended') return l.availability === 'suspended';
+          if (filterStatus === 'rejected') return l.availability === 'rejected';
           return true;
         });
       }
@@ -238,6 +239,14 @@ export default function ListingManagement({ onNavigate }: ListingManagementProps
                 Suspended
               </Text>
             </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.filterButton, filterStatus === 'rejected' && styles.filterButtonActive]}
+              onPress={() => setFilterStatus('rejected')}
+            >
+              <Text style={[styles.filterButtonText, filterStatus === 'rejected' && styles.filterButtonTextActive]}>
+                Rejected
+              </Text>
+            </TouchableOpacity>
           </View>
 
           <Text style={styles.filterLabel}>Filter by Location:</Text>
@@ -276,9 +285,9 @@ export default function ListingManagement({ onNavigate }: ListingManagementProps
               <Text style={styles.listingLocation}>📍 {listing.location}</Text>
               <View style={styles.listingMeta}>
                 <Text style={styles.listingPrice}>£{listing.price}/night</Text>
-                <View style={[styles.statusBadge, listing.availability === 'available' && styles.statusBadgeActive, listing.availability === 'pending' && styles.statusBadgePending]}>
-                  <Text style={[styles.statusText, listing.availability === 'available' && styles.statusTextActive, listing.availability === 'pending' && styles.statusTextPending]}>
-                    {listing.availability === 'pending' ? '⏳ Pending' : listing.availability === 'suspended' ? '⚠️ Suspended' : '✓ Active'}
+                <View style={[styles.statusBadge, listing.availability === 'available' && styles.statusBadgeActive, listing.availability === 'pending' && styles.statusBadgePending, listing.availability === 'rejected' && styles.statusBadgeRejected]}>
+                  <Text style={[styles.statusText, listing.availability === 'available' && styles.statusTextActive, listing.availability === 'pending' && styles.statusTextPending, listing.availability === 'rejected' && styles.statusTextRejected]}>
+                    {listing.availability === 'pending' ? '⏳ Pending' : listing.availability === 'rejected' ? '✕ Rejected' : listing.availability === 'suspended' ? '⚠️ Suspended' : '✓ Active'}
                   </Text>
                 </View>
               </View>
@@ -308,7 +317,15 @@ export default function ListingManagement({ onNavigate }: ListingManagementProps
                 </>
               )}
               
-              {listing.availability !== 'pending' && (
+              {/* Show rejection details for rejected listings */}
+              {listing.availability === 'rejected' && listing.rejectionReason && (
+                <View style={styles.rejectionInfoBanner}>
+                  <Text style={styles.rejectionInfoTitle}>Rejected Feedback:</Text>
+                  <Text style={styles.rejectionInfoText}>{listing.rejectionReason}</Text>
+                </View>
+              )}
+
+              {listing.availability !== 'pending' && listing.availability !== 'rejected' && (
                 <>
                   <TouchableOpacity
                     style={[styles.actionButton]}
@@ -331,6 +348,15 @@ export default function ListingManagement({ onNavigate }: ListingManagementProps
                     <Text style={[styles.actionButtonText, styles.deleteButtonText]}>Delete</Text>
                   </TouchableOpacity>
                 </>
+              )}
+
+              {listing.availability === 'rejected' && (
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.deleteButton]}
+                  onPress={() => handleDeleteListing(listing.id)}
+                >
+                  <Text style={[styles.actionButtonText, styles.deleteButtonText]}>Remove</Text>
+                </TouchableOpacity>
               )}
             </View>
           </View>
@@ -477,6 +503,9 @@ const styles = StyleSheet.create({
   statusBadgePending: {
     backgroundColor: '#FFF3E0',
   },
+  statusBadgeRejected: {
+    backgroundColor: '#FFEBEE',
+  },
   statusText: {
     fontSize: 12,
     fontWeight: '600',
@@ -487,6 +516,9 @@ const styles = StyleSheet.create({
   },
   statusTextPending: {
     color: '#F57C00',
+  },
+  statusTextRejected: {
+    color: '#D32F2F',
   },
   listingActions: {
     flexDirection: 'row',
@@ -534,6 +566,25 @@ const styles = StyleSheet.create({
   },
   deleteButtonText: {
     color: '#D32F2F',
+  },
+  rejectionInfoBanner: {
+    backgroundColor: '#FFEBEE',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#D32F2F',
+  },
+  rejectionInfoTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#D32F2F',
+    marginBottom: 4,
+  },
+  rejectionInfoText: {
+    fontSize: 13,
+    color: '#666',
+    lineHeight: 18,
   },
 });
 

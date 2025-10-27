@@ -314,28 +314,51 @@ export default function ListingsScreen({ onNavigate }: ListingsScreenProps = {})
 
           {isFarmer && currentUser && (
             <View style={styles.actionButtons}>
-              <TouchableOpacity 
-                style={styles.editButton}
-                onPress={() => onNavigate?.('edit-listing', item)}
-              >
-                <Text style={styles.editButtonText}>✏️ Edit</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.reviewsButton}
-                onPress={() => onNavigate?.('reviews')}
-              >
-                <Text style={styles.reviewsButtonText}>⭐ Reviews</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.deleteButton}
-                onPress={() => {
-                  if (window.confirm('Are you sure you want to delete this listing?')) {
-                    console.log('Delete listing:', item.id);
-                  }
-                }}
-              >
-                <Text style={styles.deleteButtonText}>🗑️ Delete</Text>
-              </TouchableOpacity>
+              {item.availability === 'rejected' ? (
+                <>
+                  <TouchableOpacity 
+                    style={styles.resubmitButton}
+                    onPress={() => onNavigate?.('edit-listing', item)}
+                  >
+                    <Text style={styles.resubmitButtonText}>🔄 Fix & Resubmit</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={styles.deleteButton}
+                    onPress={() => {
+                      if (window.confirm('Are you sure you want to delete this rejected listing?')) {
+                        console.log('Delete listing:', item.id);
+                      }
+                    }}
+                  >
+                    <Text style={styles.deleteButtonText}>🗑️ Delete</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <>
+                  <TouchableOpacity 
+                    style={styles.editButton}
+                    onPress={() => onNavigate?.('edit-listing', item)}
+                  >
+                    <Text style={styles.editButtonText}>✏️ Edit</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={styles.reviewsButton}
+                    onPress={() => onNavigate?.('reviews')}
+                  >
+                    <Text style={styles.reviewsButtonText}>⭐ Reviews</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={styles.deleteButton}
+                    onPress={() => {
+                      if (window.confirm('Are you sure you want to delete this listing?')) {
+                        console.log('Delete listing:', item.id);
+                      }
+                    }}
+                  >
+                    <Text style={styles.deleteButtonText}>🗑️ Delete</Text>
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
           )}
         </View>
@@ -779,5 +802,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#D32F2F',
     fontStyle: 'italic',
+  },
+  resubmitButton: {
+    backgroundColor: '#2E7D32',
+    flex: 1,
+    minWidth: 100,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  resubmitButtonText: {
+    fontSize: 13,
+    color: '#FFFFFF',
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });
