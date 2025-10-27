@@ -71,11 +71,6 @@ export default function CreateListingScreen({ onNavigate }: CreateListingScreenP
     'Wildlife guides',
     'Rustic benches',
     'Swimming',
-    'Parking',
-    'River Access',
-    'Mountain Access',
-    'Lake Access',
-  ];
 
   const availableRestrictions = [
     'No Dogs', 'No Children', 'No Fires', 'No Smoking', 'No Alcohol',

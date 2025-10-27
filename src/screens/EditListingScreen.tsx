@@ -816,18 +816,17 @@ export default function EditListingScreen({ listing, onNavigate }: EditListingSc
               
               if (rejectionReason && rejectionReason.trim()) {
                 if (currentListing) {
-                  // Store rejection reason with the listing before deleting
+                  // Store rejection reason and mark as rejected instead of deleting
                   const listing = await LocalStorageService.getById('listings', currentListing.id);
                   if (listing) {
                     listing.rejectionReason = rejectionReason;
                     listing.rejectedAt = new Date().toISOString();
+                    listing.availability = 'rejected'; // Mark as rejected so farmer can see
                     await LocalStorageService.save('listings', listing);
-                    
-                    // Now delete the listing
-                    await LocalStorageService.delete('listings', currentListing.id);
-                    alert('Listing rejected and farmer notified');
-                    onNavigate?.('listing-management');
                   }
+                  
+                  alert('Listing rejected. Farmer can see the feedback and resubmit.');
+                  onNavigate?.('listing-management');
                 }
               } else if (rejectionReason !== null) {
                 // User pressed OK without entering a reason

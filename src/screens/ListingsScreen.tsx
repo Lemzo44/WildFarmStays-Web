@@ -220,6 +220,15 @@ export default function ListingsScreen({ onNavigate }: ListingsScreenProps = {})
             <Text style={styles.listingTitle}>{item.title}</Text>
           </View>
           
+          {/* Show rejection feedback to farmers for rejected listings */}
+          {item.availability === 'rejected' && item.rejectionReason && isFarmer && (
+            <View style={styles.rejectionBanner}>
+              <Text style={styles.rejectionText}>⚠️ Listing Rejected</Text>
+              <Text style={styles.rejectionReason}>Admin feedback: {item.rejectionReason}</Text>
+              <Text style={styles.rejectionHelp}>Please edit this listing to address the issues and resubmit.</Text>
+            </View>
+          )}
+          
           <Text style={styles.location}>📍 {item.location}</Text>
           
           <View style={styles.ratingContainer}>
@@ -745,5 +754,30 @@ const styles = StyleSheet.create({
     color: '#D32F2F',
     fontWeight: '600',
     textAlign: 'center',
+  },
+  rejectionBanner: {
+    backgroundColor: '#FFEBEE',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#D32F2F',
+  },
+  rejectionText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#D32F2F',
+    marginBottom: 4,
+  },
+  rejectionReason: {
+    fontSize: 13,
+    color: '#666',
+    lineHeight: 18,
+    marginBottom: 4,
+  },
+  rejectionHelp: {
+    fontSize: 12,
+    color: '#D32F2F',
+    fontStyle: 'italic',
   },
 });

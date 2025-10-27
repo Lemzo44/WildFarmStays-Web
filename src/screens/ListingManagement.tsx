@@ -111,16 +111,16 @@ export default function ListingManagement({ onNavigate }: ListingManagementProps
           style: 'destructive',
           onPress: async () => {
             try {
-              // Store rejection reason before deleting
+              // Store rejection reason and mark as rejected instead of deleting
               const listing = await LocalStorageService.getById('listings', listingId);
               if (listing) {
                 listing.rejectionReason = rejectionReason;
                 listing.rejectedAt = new Date().toISOString();
+                listing.availability = 'rejected'; // Mark as rejected so farmer can see
                 await LocalStorageService.save('listings', listing);
               }
               
-              await LocalStorageService.delete('listings', listingId);
-              Alert.alert('Success', 'Listing rejected and farmer notified');
+              Alert.alert('Success', 'Listing rejected. Farmer can see the feedback and resubmit.');
               loadListings();
             } catch (error) {
               Alert.alert('Error', 'Failed to reject listing');
