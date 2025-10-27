@@ -5,6 +5,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import LandingPage from './screens/LandingPage';
 import HomeScreen from './screens/HomeScreen';
 import LoginScreen from './screens/LoginScreen';
+import RegisterScreen from './screens/RegisterScreen';
 import SearchScreen from './screens/SearchScreen';
 import ListingsScreen from './screens/ListingsScreen';
 import MessagesScreen from './screens/MessagesScreen';
@@ -43,6 +44,8 @@ function AppContent() {
         return <LandingPage onNavigate={handleNavigate} />;
       case 'login':
         return <LoginScreen onNavigate={handleNavigate} />;
+      case 'register':
+        return <RegisterScreen onNavigate={handleNavigate} userRole={screenData as 'camper' | 'farmer'} />;
       case 'about':
         return <AboutUsScreen onNavigate={handleNavigate} />;
       case 'faqs':
@@ -89,7 +92,7 @@ function AppContent() {
   };
 
   // Don't show bottom navigation for public pages
-  const publicScreens = ['landing', 'login', 'about', 'faqs', 'terms', 'privacy', 'join-camper', 'join-host', 'contact'];
+  const publicScreens = ['landing', 'login', 'register', 'about', 'faqs', 'terms', 'privacy', 'join-camper', 'join-host', 'contact'];
   const isPublicScreen = publicScreens.includes(currentScreen);
 
   if (!currentUser && !isPublicScreen) {

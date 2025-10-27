@@ -6,13 +6,19 @@ interface User {
   email: string;
   role: 'camper' | 'farmer';
   name?: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  farmName?: string;
+  farmAddress?: string;
+  postcode?: string;
 }
 
 interface AuthContextType {
   currentUser: User | null;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
-  register: (email: string, password: string, role: 'camper' | 'farmer') => Promise<boolean>;
+  register: (email: string, password: string, role: 'camper' | 'farmer', userData?: Partial<User>) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -97,17 +103,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return false;
   };
 
-  const register = async (email: string, password: string, role: 'camper' | 'farmer'): Promise<boolean> => {
+  const register = async (email: string, password: string, role: 'camper' | 'farmer', userData?: Partial<User>): Promise<boolean> => {
     // Simulate registration
     const newUser: User = {
       id: Date.now().toString(),
       email,
       role,
       name: email.split('@')[0],
+      ...userData
     };
     
     setCurrentUser(newUser);
     localStorage.setItem('currentUser', JSON.stringify(newUser));
+    
+    // Also save to users list
+    const allUsers = JSON.parse(localStorage.getItem('users') || '[]');
+    allUsers.push(newUser);
+    localStorage.setItem('users', JSON.stringify(allUsers));
+    
     return true;
   };
 

@@ -7,11 +7,9 @@ interface LoginScreenProps {
 }
 
 export default function LoginScreen({ onNavigate }: LoginScreenProps) {
-  const { login, register } = useAuth();
+  const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isRegistering, setIsRegistering] = useState(false);
-  const [role, setRole] = useState<'camper' | 'farmer'>('camper');
 
   const handleSubmit = async () => {
     if (!email || !password) {
@@ -20,17 +18,12 @@ export default function LoginScreen({ onNavigate }: LoginScreenProps) {
     }
 
     try {
-      let success = false;
-      if (isRegistering) {
-        success = await register(email, password, role);
-      } else {
-        success = await login(email, password);
-      }
+      const success = await login(email, password);
 
       if (!success) {
-        Alert.alert('Error', isRegistering ? 'Registration failed' : 'Login failed');
+        Alert.alert('Error', 'Login failed. Please check your credentials.');
       } else {
-        // Navigate to home after successful login/registration
+        // Navigate to home after successful login
         onNavigate?.('home');
       }
     } catch (error) {
@@ -46,39 +39,11 @@ export default function LoginScreen({ onNavigate }: LoginScreenProps) {
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
         <Text style={styles.title}>WildFarmStays</Text>
-        <Text style={styles.subtitle}>
-          {isRegistering ? 'Create your account' : 'Welcome back!'}
-        </Text>
+        <Text style={styles.subtitle}>Welcome back!</Text>
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>
-          {isRegistering ? 'Register' : 'Login'}
-        </Text>
-
-        {isRegistering && (
-          <View style={styles.roleSelector}>
-            <Text style={styles.roleLabel}>I am a:</Text>
-            <View style={styles.roleButtons}>
-              <TouchableOpacity
-                style={[styles.roleButton, role === 'camper' && styles.roleButtonActive]}
-                onPress={() => setRole('camper')}
-              >
-                <Text style={[styles.roleButtonText, role === 'camper' && styles.roleButtonTextActive]}>
-                  🏕️ Camper
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.roleButton, role === 'farmer' && styles.roleButtonActive]}
-                onPress={() => setRole('farmer')}
-              >
-                <Text style={[styles.roleButtonText, role === 'farmer' && styles.roleButtonTextActive]}>
-                  🚜 Farmer
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
+        <Text style={styles.cardTitle}>Login</Text>
 
         <TextInput
           style={styles.input}
@@ -101,19 +66,15 @@ export default function LoginScreen({ onNavigate }: LoginScreenProps) {
         />
 
         <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-          <Text style={styles.submitButtonText}>
-            {isRegistering ? 'Register' : 'Login'}
-          </Text>
+          <Text style={styles.submitButtonText}>Login</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.switchButton}
-          onPress={() => setIsRegistering(!isRegistering)}
+          onPress={() => onNavigate?.('register')}
         >
           <Text style={styles.switchButtonText}>
-            {isRegistering
-              ? 'Already have an account? Login'
-              : "Don't have an account? Register"}
+            Don't have an account? Register
           </Text>
         </TouchableOpacity>
       </View>
