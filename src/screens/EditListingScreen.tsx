@@ -6,11 +6,11 @@ import { LocalStorageService } from '../services/LocalStorageService';
 
 interface EditListingScreenProps {
   listing?: any;
-  onNavigate?: (screen: string) => void;
+  onNavigate?: (screen: string, data?: any) => void;
 }
 
 export default function EditListingScreen({ listing, onNavigate }: EditListingScreenProps) {
-  const { currentUser } = useAuth();
+  const { currentUser, isAdmin } = useAuth();
   const { theme } = useTheme();
   const [formData, setFormData] = useState({
     title: '',
@@ -53,7 +53,10 @@ export default function EditListingScreen({ listing, onNavigate }: EditListingSc
     maxGuests: 4,
   };
 
-  const currentListing = listing || mockListing;
+  // Extract listing from screenData if it's an object with listing property
+  const extractedListing = listing?.listing || listing;
+  const currentListing = extractedListing || mockListing;
+  const isFromAdmin = listing?.fromAdmin || false;
 
   useEffect(() => {
     // Populate form with existing listing data
@@ -453,6 +456,11 @@ export default function EditListingScreen({ listing, onNavigate }: EditListingSc
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
+        {(isAdmin() || isFromAdmin) && (
+          <TouchableOpacity onPress={() => onNavigate?.('listing-management')} style={styles.backButton}>
+            <Text style={styles.backButtonText}>← Back to Listings</Text>
+          </TouchableOpacity>
+        )}
         <Text style={styles.title}>Edit Farm Listing</Text>
         <Text style={styles.subtitle}>
           Update your farm listing information
@@ -826,6 +834,14 @@ const styles = StyleSheet.create({
   header: {
     padding: 20,
     paddingBottom: 10,
+  },
+  backButton: {
+    marginBottom: 16,
+  },
+  backButtonText: {
+    color: '#2E7D32',
+    fontSize: 16,
+    fontWeight: '600',
   },
   title: {
     fontSize: 24,

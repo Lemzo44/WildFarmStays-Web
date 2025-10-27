@@ -290,7 +290,7 @@ export default function ListingManagement({ onNavigate }: ListingManagementProps
                 <>
                   <TouchableOpacity
                     style={[styles.actionButton]}
-                    onPress={() => onNavigate?.('edit-listing', listing)}
+                    onPress={() => onNavigate?.('edit-listing', { listing, fromAdmin: true })}
                   >
                     <Text style={styles.actionButtonText}>View</Text>
                   </TouchableOpacity>
