@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 
 interface FAQsScreenProps {
@@ -6,13 +6,7 @@ interface FAQsScreenProps {
 }
 
 export default function FAQsScreen({ onNavigate }: FAQsScreenProps) {
-  const scrollViewRef = useRef<ScrollView>(null);
   const [expandedFAQ, setExpandedFAQ] = useState<string | null>(null);
-
-  useEffect(() => {
-    // Scroll to top when component mounts
-    scrollViewRef.current?.scrollTo({ x: 0, y: 0, animated: false });
-  }, []);
 
   const faqs = [
     {
@@ -62,7 +56,7 @@ export default function FAQsScreen({ onNavigate }: FAQsScreenProps) {
   };
 
   return (
-    <ScrollView ref={scrollViewRef} style={styles.container}>
+    <ScrollView contentOffset={{ x: 0, y: 0 }} style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerButtons}>
           <TouchableOpacity onPress={() => onNavigate?.('landing')} style={styles.backButton}>

@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 
 interface TermsScreenProps {
@@ -6,15 +6,8 @@ interface TermsScreenProps {
 }
 
 export default function TermsScreen({ onNavigate }: TermsScreenProps) {
-  const scrollViewRef = useRef<ScrollView>(null);
-
-  useEffect(() => {
-    // Scroll to top when component mounts
-    scrollViewRef.current?.scrollTo({ x: 0, y: 0, animated: false });
-  }, []);
-
   return (
-    <ScrollView ref={scrollViewRef} style={styles.container}>
+    <ScrollView contentOffset={{ x: 0, y: 0 }} style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerButtons}>
           <TouchableOpacity onPress={() => onNavigate?.('landing')} style={styles.backButton}>
