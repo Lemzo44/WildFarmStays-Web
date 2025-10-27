@@ -774,6 +774,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     padding: 16,
+    flexWrap: 'wrap',
   },
   messageButton: {
     backgroundColor: '#E8F5E8',
@@ -781,12 +782,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 8,
     flex: 1,
+    minWidth: 120,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   messageButtonText: {
     color: '#2E7D32',
     fontWeight: 'bold',
-    fontSize: 16,
+    fontSize: 15,
+    textAlign: 'center',
   },
   bookButton: {
     backgroundColor: '#2E7D32',
@@ -794,7 +798,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 8,
     flex: 2,
+    minWidth: 140,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   bookButtonDisabled: {
     backgroundColor: '#CCCCCC',
@@ -802,7 +808,8 @@ const styles = StyleSheet.create({
   bookButtonText: {
     color: '#FFFFFF',
     fontWeight: 'bold',
-    fontSize: 16,
+    fontSize: 15,
+    textAlign: 'center',
   },
   errorContainer: {
     backgroundColor: '#FFEBEE',

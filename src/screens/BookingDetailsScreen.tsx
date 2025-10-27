@@ -665,6 +665,7 @@ const styles = StyleSheet.create({
   actionButtons: {
     flexDirection: 'row',
     gap: 12,
+    flexWrap: 'wrap',
   },
   editButton: {
     backgroundColor: '#E3F2FD',
@@ -672,12 +673,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 8,
     flex: 1,
+    minWidth: 120,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   editButtonText: {
     color: '#1976D2',
     fontSize: 14,
     fontWeight: '600',
+    textAlign: 'center',
   },
   cancelButton: {
     backgroundColor: '#FFEBEE',
@@ -685,12 +689,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 8,
     flex: 1,
+    minWidth: 120,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   cancelButtonText: {
     color: '#D32F2F',
     fontSize: 14,
     fontWeight: '600',
+    textAlign: 'center',
   },
   modalOverlay: {
     position: 'absolute',
