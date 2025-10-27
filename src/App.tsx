@@ -41,7 +41,7 @@ function AppContent() {
       case 'profile':
         return <ProfileScreen />;
       case 'booking':
-        return <BookingScreen />;
+        return <BookingScreen listing={screenData} />;
       case 'review':
         return <ReviewScreen />;
       case 'reviews':

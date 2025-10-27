@@ -152,6 +152,13 @@ export default function BookingScreen({ listing, onNavigate }: BookingScreenProp
     });
   };
 
+  const formatDateForInput = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const calculateTotal = () => {
     const days = Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24));
     return currentListing.price * days;
@@ -329,41 +336,48 @@ export default function BookingScreen({ listing, onNavigate }: BookingScreenProp
         <View style={styles.dateRow}>
           <View style={styles.dateInput}>
             <Text style={styles.inputLabel}>Check-in</Text>
-            <TextInput
-              style={styles.dateTextInput}
-              value={formatDate(checkInDate)}
-              editable={false}
-            />
-            <TouchableOpacity 
-              style={styles.dateButton}
-              onPress={() => {
-                const newDate = new Date(checkInDate);
-                newDate.setDate(newDate.getDate() + 1);
-                handleCheckInDateChange(newDate);
+            <input
+              type="date"
+              value={formatDateForInput(checkInDate)}
+              onChange={(e) => {
+                if (e.target.value) {
+                  handleCheckInDateChange(new Date(e.target.value));
+                }
               }}
-            >
-              <Text style={styles.dateButtonText}>+1 day</Text>
-            </TouchableOpacity>
+              style={{
+                width: '100%',
+                padding: '12px',
+                fontSize: '16px',
+                border: '1px solid #E0E0E0',
+                borderRadius: '8px',
+                backgroundColor: '#F5F5F5',
+                marginBottom: '8px'
+              }}
+            />
           </View>
           
           <View style={styles.dateInput}>
             <Text style={styles.inputLabel}>Check-out</Text>
-            <TextInput
-              style={styles.dateTextInput}
-              value={formatDate(checkOutDate)}
-              editable={false}
-            />
-            <TouchableOpacity 
-              style={styles.dateButton}
-              onPress={() => {
-                const newDate = new Date(checkOutDate);
-                newDate.setDate(newDate.getDate() + 1);
-                setCheckOutDate(newDate);
-                setAvailabilityChecked(false);
+            <input
+              type="date"
+              value={formatDateForInput(checkOutDate)}
+              min={formatDateForInput(checkInDate)}
+              onChange={(e) => {
+                if (e.target.value) {
+                  setCheckOutDate(new Date(e.target.value));
+                  setAvailabilityChecked(false);
+                }
               }}
-            >
-              <Text style={styles.dateButtonText}>+1 day</Text>
-            </TouchableOpacity>
+              style={{
+                width: '100%',
+                padding: '12px',
+                fontSize: '16px',
+                border: '1px solid #E0E0E0',
+                borderRadius: '8px',
+                backgroundColor: '#F5F5F5',
+                marginBottom: '8px'
+              }}
+            />
           </View>
         </View>
 
