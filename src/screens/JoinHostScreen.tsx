@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 
 interface JoinHostScreenProps {
@@ -6,8 +6,15 @@ interface JoinHostScreenProps {
 }
 
 export default function JoinHostScreen({ onNavigate }: JoinHostScreenProps) {
+  const scrollViewRef = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    // Scroll to top when component mounts
+    scrollViewRef.current?.scrollTo({ x: 0, y: 0, animated: false });
+  }, []);
+
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView ref={scrollViewRef} style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerButtons}>
           <TouchableOpacity onPress={() => onNavigate?.('landing')} style={styles.backButton}>
