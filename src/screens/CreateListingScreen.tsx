@@ -18,6 +18,7 @@ export default function CreateListingScreen({ onNavigate }: CreateListingScreenP
     address: '',
     postcode: '',
     location: '',
+    parkingLocation: '',
     coordinates: null as { latitude: number; longitude: number } | null,
     amenities: [] as string[],
     restrictions: [] as string[],
@@ -486,6 +487,16 @@ export default function CreateListingScreen({ onNavigate }: CreateListingScreenP
             value={formData.postcode}
             onChangeText={(value) => handleInputChange('postcode', value)}
             placeholder="e.g., YO1 1AA"
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Parking Location *</Text>
+          <TextInput
+            style={styles.textInput}
+            value={formData.parkingLocation}
+            onChangeText={(value) => handleInputChange('parkingLocation', value)}
+            placeholder="e.g., Designated field, Near farm gate, Secure parking area"
           />
         </View>
 

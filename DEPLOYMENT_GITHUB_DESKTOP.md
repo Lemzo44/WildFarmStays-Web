@@ -136,3 +136,5 @@ Your WildFarmStays-Web v1.0.0 is now deployed!
 - Vercel Docs: https://vercel.com/docs
 - Your project is ready to deploy!
 
+
+

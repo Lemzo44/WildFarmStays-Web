@@ -252,3 +252,5 @@ Your WildFarmStays-Web v1.0.0 is now live on Vercel! 🎉
 
 Access your site at: `https://wildfarmstays-web.vercel.app`
 
+
+
