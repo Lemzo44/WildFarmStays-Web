@@ -405,12 +405,14 @@ const STORAGE_KEYS = {
 // Initialize local storage with mock data
 export const initializeLocalStorage = () => {
   try {
+    // Always update listings with latest data
+    localStorage.setItem(STORAGE_KEYS.LISTINGS, JSON.stringify(MOCK_DATA.listings));
+    
     // Check if data already exists
     const existingUsers = localStorage.getItem(STORAGE_KEYS.USERS);
     if (!existingUsers) {
       // Store mock data
       localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(MOCK_DATA.users));
-      localStorage.setItem(STORAGE_KEYS.LISTINGS, JSON.stringify(MOCK_DATA.listings));
       localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(MOCK_DATA.bookings));
       localStorage.setItem(STORAGE_KEYS.REVIEWS, JSON.stringify(MOCK_DATA.reviews));
       localStorage.setItem(STORAGE_KEYS.MESSAGES, JSON.stringify(MOCK_DATA.messages));
