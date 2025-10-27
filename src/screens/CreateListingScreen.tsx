@@ -341,14 +341,14 @@ export default function CreateListingScreen({ onNavigate }: CreateListingScreenP
         blackoutDates: formData.blackoutDates,
         rating: 0,
         reviewCount: 0,
-        availability: 'available',
+        availability: 'pending', // New listings require admin approval
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
 
       await LocalStorageService.save('listings', listingData);
       
-      alert('Farm listing created successfully!');
+      alert('Farm listing submitted successfully! It will be reviewed by our admin team before going live.');
       onNavigate?.('listings');
     } catch (error) {
       console.error('Error creating listing:', error);

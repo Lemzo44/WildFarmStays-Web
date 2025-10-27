@@ -38,15 +38,19 @@ export default function ListingsScreen({ onNavigate }: ListingsScreenProps = {})
       // Filter listings based on user role
       let filteredListings = allListings;
       if (isFarmer && currentUser) {
+        // Farmers see all their listings (including pending for approval)
         filteredListings = allListings.filter((listing: any) => listing.farmerId === currentUser.id);
+      } else {
+        // Campers only see available listings (pending listings require admin approval)
+        filteredListings = allListings.filter((listing: any) => listing.availability === 'available');
       }
       
       setListings(filteredListings);
       
-      // Load favorite status for each listing
+      // Load favorite status for each listing (only for available listings shown to campers)
       if (currentUser && !isFarmer) {
         const statusMap: any = {};
-        for (const listing of allListings) {
+        for (const listing of filteredListings) {
           statusMap[listing.id] = await FavoritesService.isFavorite(currentUser.id, listing.id);
         }
         setFavoriteStatus(statusMap);
@@ -54,7 +58,7 @@ export default function ListingsScreen({ onNavigate }: ListingsScreenProps = {})
 
       // Load review stats for each listing
       const reviewStatsMap: any = {};
-      for (const listing of allListings) {
+      for (const listing of filteredListings) {
         const stats = await ReviewService.getListingReviewStats(listing.id);
         reviewStatsMap[listing.id] = stats;
       }

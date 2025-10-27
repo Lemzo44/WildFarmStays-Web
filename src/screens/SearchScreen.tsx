@@ -35,8 +35,11 @@ export default function SearchScreen() {
   const loadListings = async () => {
     try {
       const allListings = await LocalStorageService.getAll('listings');
+      // Only show available listings to campers (pending listings require admin approval)
+      const availableListings = allListings.filter((listing: any) => listing.availability === 'available');
       console.log('📋 All listings loaded:', allListings.length);
-      setListings(allListings);
+      console.log('✅ Available listings:', availableListings.length);
+      setListings(availableListings);
     } catch (error) {
       console.error('❌ Error loading listings:', error);
     } finally {

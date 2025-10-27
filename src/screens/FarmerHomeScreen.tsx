@@ -31,16 +31,36 @@ export default function FarmerHomeScreen({ onNavigate }: FarmerHomeScreenProps =
     try {
       setLoading(true);
       
-      // Mock data for demonstration
+      // Load actual data for the farmer
+      const allListings = await LocalStorageService.getAll('listings');
+      const farmerListings = allListings.filter((listing: any) => listing.farmerId === currentUser?.id);
+      
+      const totalListings = farmerListings.length;
+      const activeListings = farmerListings.filter((listing: any) => listing.availability === 'available').length;
+      const pendingListings = farmerListings.filter((listing: any) => listing.availability === 'pending').length;
+      
+      const allBookings = await LocalStorageService.getAll('bookings');
+      const farmerBookings = allBookings.filter((booking: any) => booking.farmerId === currentUser?.id);
+      
+      const totalBookings = farmerBookings.length;
+      const upcomingBookings = farmerBookings.filter((booking: any) => 
+        ['pending', 'confirmed', 'upcoming'].includes(booking.status)
+      ).length;
+      
+      const totalEarnings = farmerBookings
+        .filter((b: any) => b.status !== 'cancelled')
+        .reduce((sum: number, b: any) => sum + (b.totalPrice || 0), 0);
+      
       const mockStats = {
-        totalListings: 3,
-        activeListings: 2,
-        totalBookings: 12,
-        upcomingBookings: 4,
-        totalEarnings: 450.00,
-        unreadMessages: 2,
-        totalReviews: 8,
-        averageRating: 4.6,
+        totalListings,
+        activeListings,
+        pendingListings,
+        totalBookings,
+        upcomingBookings,
+        totalEarnings: Math.round(totalEarnings),
+        unreadMessages: 0, // TODO: Load actual unread messages
+        totalReviews: 0, // TODO: Load actual reviews
+        averageRating: 0, // TODO: Load actual average rating
       };
 
       const mockRecentBookings = [
@@ -131,6 +151,15 @@ export default function FarmerHomeScreen({ onNavigate }: FarmerHomeScreenProps =
         </TouchableOpacity>
       </View>
 
+      {/* Notification for pending listings */}
+      {stats.pendingListings > 0 && (
+        <View style={styles.notificationBanner}>
+          <Text style={styles.notificationText}>
+            ⏳ You have {stats.pendingListings} listing{stats.pendingListings > 1 ? 's' : ''} pending admin approval
+          </Text>
+        </View>
+      )}
+
       {/* Stats Overview */}
       <View style={styles.statsContainer}>
         <View style={styles.statCard}>
@@ -142,8 +171,8 @@ export default function FarmerHomeScreen({ onNavigate }: FarmerHomeScreenProps =
           <Text style={styles.statLabel}>Active</Text>
         </View>
         <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{stats.totalBookings}</Text>
-          <Text style={styles.statLabel}>Total Bookings</Text>
+          <Text style={styles.statNumber}>{stats.pendingListings}</Text>
+          <Text style={styles.statLabel}>Pending Approval</Text>
         </View>
         <View style={styles.statCard}>
           <Text style={styles.statNumber}>£{stats.totalEarnings.toFixed(0)}</Text>
@@ -303,6 +332,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
     textAlign: 'center',
+  },
+  notificationBanner: {
+    backgroundColor: '#FFF3E0',
+    padding: 16,
+    marginHorizontal: 16,
+    marginTop: 16,
+    borderRadius: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#F57C00',
+  },
+  notificationText: {
+    fontSize: 14,
+    color: '#F57C00',
+    fontWeight: '600',
   },
   card: {
     margin: 16,
