@@ -710,6 +710,7 @@ const styles = StyleSheet.create({
     borderColor: '#E0E0E0',
     minHeight: 80,
     textAlignVertical: 'top',
+    color: '#333',
   },
   checkAvailabilityButton: {
     backgroundColor: '#E8F5E8',

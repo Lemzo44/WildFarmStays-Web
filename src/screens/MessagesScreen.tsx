@@ -479,6 +479,7 @@ const styles = StyleSheet.create({
     maxHeight: 100,
     borderWidth: 1,
     borderColor: '#E0E0E0',
+    color: '#333',
   },
   sendButton: {
     backgroundColor: '#2E7D32',

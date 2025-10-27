@@ -825,6 +825,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     borderWidth: 1,
     borderColor: '#E0E0E0',
+    color: '#333',
   },
   textArea: {
     backgroundColor: '#F5F5F5',
@@ -835,6 +836,7 @@ const styles = StyleSheet.create({
     borderColor: '#E0E0E0',
     minHeight: 100,
     textAlignVertical: 'top',
+    color: '#333',
   },
   guestsRow: {
     flexDirection: 'row',

@@ -272,6 +272,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderWidth: 1,
     borderColor: '#E0E0E0',
+    color: '#333',
   },
   filterContainer: {
     position: 'relative',
