@@ -113,6 +113,55 @@ After setup:
 3. ✅ Gradually migrate other services
 4. ✅ Remove localStorage fallback once stable
 
+## Adding Test Data
+
+### Quick Setup: 10 Test Listings
+
+To quickly populate your database with 10 diverse test listings:
+
+1. **Register a farmer user** via the app first (this creates the profile in `public.profiles`)
+2. Open Supabase SQL Editor: https://supabase.com/dashboard/project/_/sql
+3. Copy and run the script: `supabase/seed_test_listings.sql`
+
+This script will:
+- ✅ Create 10 listings with different:
+  - Counties (including both ROI and Northern Ireland for waiver testing)
+  - Statuses (pending, approved, live, rejected)
+  - Prices (£30-£70)
+  - Amenities and features
+- ✅ Use valid amenities from your app's list
+- ✅ Assign listings to your first farmer user
+
+**Verify the results:**
+```sql
+SELECT id, title, county, status, availability, price_per_night 
+FROM public.listings 
+ORDER BY created_at DESC 
+LIMIT 10;
+```
+
+### Complete Test Data Setup
+
+To seed a full set of test data (listings, bookings, reviews, etc.):
+1. Register at least one camper and one farmer via the app
+2. Run `supabase/seed_all_test_data.sql` in SQL Editor
+
+This creates a complete test scenario with:
+- Listings
+- Bookings (with waiver data)
+- Reviews
+- Favorites
+- Support tickets
+
+### Troubleshooting
+
+**Error: "No farmer found"**
+- Solution: Register a farmer user through the app registration flow first
+- The script needs at least one user with `role = 'farmer'` in `public.profiles`
+
+**Error: "Foreign key constraint"**
+- Ensure users are properly registered (both `auth.users` and `public.profiles` entries exist)
+
 ---
 
 ## Useful Supabase Resources
