@@ -212,7 +212,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const register = async (email: string, password: string, role: 'camper' | 'farmer' | 'admin', userData?: Partial<User>): Promise<boolean> => {
+    console.log('=== REGISTRATION DEBUG ===');
+    console.log('useSupabase flag:', useSupabase);
+    console.log('supabase client exists:', !!supabase);
+    console.log('Supabase URL:', import.meta.env.VITE_SUPABASE_URL ? 'SET' : 'MISSING');
+    console.log('Supabase Key:', import.meta.env.VITE_SUPABASE_ANON_KEY ? 'SET' : 'MISSING');
+    
     if (useSupabase && supabase) {
+      console.log('✅ Using Supabase for registration');
       try {
         // 1. Sign up with Supabase Auth
         const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -276,6 +283,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     // Fallback to localStorage
+    console.log('⚠️ Using localStorage fallback (Supabase not enabled or not configured)');
     const newUser: User = {
       id: Date.now().toString(),
       email,
