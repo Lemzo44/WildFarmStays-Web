@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
 import { LocalStorageService } from '../services/LocalStorageService';
+import { APIService } from '../services/APIService';
 
 interface ListingManagementProps {
   onNavigate?: (screen: string, data?: any) => void;
@@ -22,7 +23,9 @@ export default function ListingManagement({ onNavigate }: ListingManagementProps
 
   const loadListings = async () => {
     try {
-      const allListings = await LocalStorageService.getAll('listings');
+      const allListings = await APIService.get('listings', {
+        orderBy: { column: 'created_at', ascending: false }
+      });
       setListings(allListings);
     } catch (error) {
       console.error('Error loading listings:', error);
@@ -31,25 +34,28 @@ export default function ListingManagement({ onNavigate }: ListingManagementProps
 
   const applyFilters = async () => {
     try {
-      let allListings = await LocalStorageService.getAll('listings');
+      let allListings = await APIService.get('listings', {
+        orderBy: { column: 'created_at', ascending: false }
+      });
 
       // Filter by search query
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
         allListings = allListings.filter((l: any) =>
-          l.title.toLowerCase().includes(query) ||
-          l.location.toLowerCase().includes(query) ||
+          l.title?.toLowerCase().includes(query) ||
+          l.location?.toLowerCase().includes(query) ||
+          l.farmer_id === query ||
           l.farmerId === query
         );
       }
 
-      // Filter by status
+      // Filter by status (check both status and availability fields)
       if (filterStatus !== 'all') {
         allListings = allListings.filter((l: any) => {
-          if (filterStatus === 'pending') return l.availability === 'pending';
-          if (filterStatus === 'available') return l.availability === 'available';
+          if (filterStatus === 'pending') return l.status === 'pending';
+          if (filterStatus === 'available') return l.status === 'approved' || l.status === 'live';
           if (filterStatus === 'suspended') return l.availability === 'suspended';
-          if (filterStatus === 'rejected') return l.availability === 'rejected';
+          if (filterStatus === 'rejected') return l.status === 'rejected';
           return true;
         });
       }
@@ -77,15 +83,23 @@ export default function ListingManagement({ onNavigate }: ListingManagementProps
           text: 'Approve',
           onPress: async () => {
             try {
-              const listing = await LocalStorageService.getById('listings', listingId);
+              const listing = await APIService.getById('listings', listingId);
               if (listing) {
-                listing.availability = 'available';
-                await LocalStorageService.save('listings', listing);
-                Alert.alert('Success', 'Listing approved successfully');
-                loadListings();
+                // Update both status (for approval workflow) and availability (for operational status)
+                await APIService.update('listings', listingId, {
+                  status: 'approved',
+                  availability: 'available'
+                });
+                
+                Alert.alert('Success', 'Listing approved successfully', [
+                  { text: 'OK', onPress: () => onNavigate?.('admin-dashboard') }
+                ]);
+              } else {
+                Alert.alert('Error', 'Listing not found');
               }
-            } catch (error) {
-              Alert.alert('Error', 'Failed to approve listing');
+            } catch (error: any) {
+              console.error('Error approving listing:', error);
+              Alert.alert('Error', `Failed to approve listing: ${error.message || 'Unknown error'}`);
             }
           }
         }
@@ -112,19 +126,23 @@ export default function ListingManagement({ onNavigate }: ListingManagementProps
           style: 'destructive',
           onPress: async () => {
             try {
-              // Store rejection reason and mark as rejected instead of deleting
-              const listing = await LocalStorageService.getById('listings', listingId);
+              const listing = await APIService.getById('listings', listingId);
               if (listing) {
-                listing.rejectionReason = rejectionReason;
-                listing.rejectedAt = new Date().toISOString();
-                listing.availability = 'rejected'; // Mark as rejected so farmer can see
-                await LocalStorageService.save('listings', listing);
+                // Update status to rejected and store rejection reason
+                await APIService.update('listings', listingId, {
+                  status: 'rejected',
+                  rejection_reason: rejectionReason
+                });
+                
+                Alert.alert('Success', 'Listing rejected. Farmer can see the feedback and resubmit.', [
+                  { text: 'OK', onPress: () => onNavigate?.('admin-dashboard') }
+                ]);
+              } else {
+                Alert.alert('Error', 'Listing not found');
               }
-              
-              Alert.alert('Success', 'Listing rejected. Farmer can see the feedback and resubmit.');
-              loadListings();
-            } catch (error) {
-              Alert.alert('Error', 'Failed to reject listing');
+            } catch (error: any) {
+              console.error('Error rejecting listing:', error);
+              Alert.alert('Error', `Failed to reject listing: ${error.message || 'Unknown error'}`);
             }
           }
         }
@@ -143,15 +161,20 @@ export default function ListingManagement({ onNavigate }: ListingManagementProps
           style: 'destructive',
           onPress: async () => {
             try {
-              const listing = await LocalStorageService.getById('listings', listingId);
+              const listing = await APIService.getById('listings', listingId);
               if (listing) {
-                listing.availability = 'suspended';
-                await LocalStorageService.save('listings', listing);
-                Alert.alert('Success', 'Listing suspended successfully');
-                loadListings();
+                await APIService.update('listings', listingId, {
+                  availability: 'suspended'
+                });
+                Alert.alert('Success', 'Listing suspended successfully', [
+                  { text: 'OK', onPress: () => loadListings() }
+                ]);
+              } else {
+                Alert.alert('Error', 'Listing not found');
               }
-            } catch (error) {
-              Alert.alert('Error', 'Failed to suspend listing');
+            } catch (error: any) {
+              console.error('Error suspending listing:', error);
+              Alert.alert('Error', `Failed to suspend listing: ${error.message || 'Unknown error'}`);
             }
           }
         }
@@ -284,17 +307,32 @@ export default function ListingManagement({ onNavigate }: ListingManagementProps
               <Text style={styles.listingTitle}>{listing.title}</Text>
               <Text style={styles.listingLocation}>📍 {listing.location}</Text>
               <View style={styles.listingMeta}>
-                <Text style={styles.listingPrice}>£{listing.price}/night</Text>
-                <View style={[styles.statusBadge, listing.availability === 'available' && styles.statusBadgeActive, listing.availability === 'pending' && styles.statusBadgePending, listing.availability === 'rejected' && styles.statusBadgeRejected]}>
-                  <Text style={[styles.statusText, listing.availability === 'available' && styles.statusTextActive, listing.availability === 'pending' && styles.statusTextPending, listing.availability === 'rejected' && styles.statusTextRejected]}>
-                    {listing.availability === 'pending' ? '⏳ Pending' : listing.availability === 'rejected' ? '✕ Rejected' : listing.availability === 'suspended' ? '⚠️ Suspended' : '✓ Active'}
+                <Text style={styles.listingPrice}>£{listing.price || listing.price_per_night}/night</Text>
+                <View style={[
+                  styles.statusBadge, 
+                  (listing.status === 'approved' || listing.status === 'live') && styles.statusBadgeActive, 
+                  listing.status === 'pending' && styles.statusBadgePending, 
+                  listing.status === 'rejected' && styles.statusBadgeRejected,
+                  listing.availability === 'suspended' && styles.statusBadgeRejected
+                ]}>
+                  <Text style={[
+                    styles.statusText, 
+                    (listing.status === 'approved' || listing.status === 'live') && styles.statusTextActive, 
+                    listing.status === 'pending' && styles.statusTextPending, 
+                    listing.status === 'rejected' && styles.statusTextRejected,
+                    listing.availability === 'suspended' && styles.statusTextRejected
+                  ]}>
+                    {listing.status === 'pending' ? '⏳ Pending' : 
+                     listing.status === 'rejected' ? '✕ Rejected' : 
+                     listing.availability === 'suspended' ? '⚠️ Suspended' : 
+                     (listing.status === 'approved' || listing.status === 'live') ? '✓ Active' : '❓ Unknown'}
                   </Text>
                 </View>
               </View>
             </View>
             
             <View style={styles.listingActions}>
-              {listing.availability === 'pending' && (
+              {listing.status === 'pending' && (
                 <>
                   <TouchableOpacity
                     style={[styles.actionButton, styles.viewButton]}
@@ -318,14 +356,14 @@ export default function ListingManagement({ onNavigate }: ListingManagementProps
               )}
               
               {/* Show rejection details for rejected listings */}
-              {listing.availability === 'rejected' && listing.rejectionReason && (
+              {listing.status === 'rejected' && (listing.rejection_reason || listing.rejectionReason) && (
                 <View style={styles.rejectionInfoBanner}>
                   <Text style={styles.rejectionInfoTitle}>Rejected Feedback:</Text>
-                  <Text style={styles.rejectionInfoText}>{listing.rejectionReason}</Text>
+                  <Text style={styles.rejectionInfoText}>{listing.rejection_reason || listing.rejectionReason}</Text>
                 </View>
               )}
 
-              {listing.availability !== 'pending' && listing.availability !== 'rejected' && (
+              {listing.status !== 'pending' && listing.status !== 'rejected' && (
                 <>
                   <TouchableOpacity
                     style={[styles.actionButton]}
@@ -350,7 +388,7 @@ export default function ListingManagement({ onNavigate }: ListingManagementProps
                 </>
               )}
 
-              {listing.availability === 'rejected' && (
+              {listing.status === 'rejected' && (
                 <TouchableOpacity
                   style={[styles.actionButton, styles.deleteButton]}
                   onPress={() => handleDeleteListing(listing.id)}

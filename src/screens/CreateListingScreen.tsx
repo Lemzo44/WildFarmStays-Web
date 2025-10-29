@@ -3,6 +3,8 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { LocalStorageService } from '../services/LocalStorageService';
+import { APIService } from '../services/APIService';
+import { useSupabase } from '../lib/supabase';
 
 interface CreateListingScreenProps {
   onNavigate?: (screen: string) => void;
@@ -11,6 +13,7 @@ interface CreateListingScreenProps {
 export default function CreateListingScreen({ onNavigate }: CreateListingScreenProps) {
   const { currentUser } = useAuth();
   const { theme } = useTheme();
+  const useSupabaseBackend = useSupabase;
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -330,45 +333,78 @@ export default function CreateListingScreen({ onNavigate }: CreateListingScreenP
     try {
       setLoading(true);
       
-      const listingData = {
-        id: Date.now().toString(),
-        farmerId: currentUser.id,
-        title: formData.title.trim(),
-        description: formData.description.trim(),
-        price: parseFloat(formData.price),
-        address: formData.address.trim(),
-        postcode: formData.postcode.trim(),
-        county: formData.county.trim(),
-        location: formData.location.trim(),
-        parkingLocation: formData.parkingLocation.trim(),
-        cancellationPolicy: formData.cancellationPolicy.trim(),
-        coordinates: formData.coordinates,
-        latitude: formData.coordinates?.latitude || 54.7024, // Use actual coordinates or fallback
-        longitude: formData.coordinates?.longitude || -3.2766,
-        amenities: formData.amenities,
-        restrictions: formData.restrictions,
-        seasonalHighlights: formData.seasonalHighlights,
-        wildnessRating: formData.wildnessRating,
-        maxGuests: formData.maxGuests,
-        images: formData.images.length > 0 ? formData.images : ['https://example.com/farm.jpg'],
-        availableDays: formData.availableDays,
-        checkInTime: formData.checkInTime,
-        checkOutTime: formData.checkOutTime,
-        blackoutDates: formData.blackoutDates,
-        rating: 0,
-        reviewCount: 0,
-        availability: 'pending', // New listings require admin approval
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
+      if (useSupabaseBackend) {
+        // Map to Supabase schema (snake_case, required fields)
+        const supabaseListingData = {
+          farmer_id: currentUser.id,
+          title: formData.title.trim(),
+          description: formData.description.trim(),
+          location: formData.location.trim(),
+          address: formData.address.trim() || null,
+          postcode: formData.postcode.trim() || null,
+          county: formData.county.trim() || null,
+          latitude: formData.coordinates?.latitude || null,
+          longitude: formData.coordinates?.longitude || null,
+          price: parseFloat(formData.price) || 0,
+          price_per_night: parseFloat(formData.price) || 0,
+          max_guests: formData.maxGuests || 4,
+          amenities: formData.amenities.length > 0 ? formData.amenities : [],
+          restrictions: formData.restrictions.length > 0 ? formData.restrictions : [],
+          seasonal_highlights: formData.seasonalHighlights.length > 0 ? formData.seasonalHighlights : [],
+          images: formData.images.length > 0 ? formData.images : ['https://example.com/farm.jpg'],
+          parking_location: formData.parkingLocation.trim() || null,
+          cancellation_policy: formData.cancellationPolicy.trim() || null,
+          wildness_rating: formData.wildnessRating || 3,
+          availability: 'pending', // New listings require admin approval
+          status: 'pending', // Admin approval workflow
+          rating: null,
+          review_count: 0,
+        };
 
-      await LocalStorageService.save('listings', listingData);
+        const createdListing = await APIService.create('listings', supabaseListingData);
+        console.log('Listing created in Supabase:', createdListing);
+      } else {
+        // Fallback to localStorage
+        const listingData = {
+          id: Date.now().toString(),
+          farmerId: currentUser.id,
+          title: formData.title.trim(),
+          description: formData.description.trim(),
+          price: parseFloat(formData.price),
+          address: formData.address.trim(),
+          postcode: formData.postcode.trim(),
+          county: formData.county.trim(),
+          location: formData.location.trim(),
+          parkingLocation: formData.parkingLocation.trim(),
+          cancellationPolicy: formData.cancellationPolicy.trim(),
+          coordinates: formData.coordinates,
+          latitude: formData.coordinates?.latitude || 54.7024,
+          longitude: formData.coordinates?.longitude || -3.2766,
+          amenities: formData.amenities,
+          restrictions: formData.restrictions,
+          seasonalHighlights: formData.seasonalHighlights,
+          wildnessRating: formData.wildnessRating,
+          maxGuests: formData.maxGuests,
+          images: formData.images.length > 0 ? formData.images : ['https://example.com/farm.jpg'],
+          availableDays: formData.availableDays,
+          checkInTime: formData.checkInTime,
+          checkOutTime: formData.checkOutTime,
+          blackoutDates: formData.blackoutDates,
+          rating: 0,
+          reviewCount: 0,
+          availability: 'pending',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+
+        await LocalStorageService.save('listings', listingData);
+      }
       
       alert('Farm listing submitted successfully! It will be reviewed by our admin team before going live.');
       onNavigate?.('listings');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating listing:', error);
-      setError('Failed to create listing. Please try again.');
+      setError(`Failed to create listing: ${error.message || 'Please try again.'}`);
       setShowError(true);
     } finally {
       setLoading(false);

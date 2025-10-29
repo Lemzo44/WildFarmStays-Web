@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { LocalStorageService } from '../services/LocalStorageService';
+import { APIService } from '../services/APIService';
+import { useSupabase } from '../lib/supabase';
 
 interface FarmerHomeScreenProps {
   onNavigate?: (screen: string) => void;
@@ -30,17 +32,57 @@ export default function FarmerHomeScreen({ onNavigate }: FarmerHomeScreenProps =
   const loadData = async () => {
     try {
       setLoading(true);
+      const useSupabaseBackend = useSupabase;
       
-      // Load actual data for the farmer
-      const allListings = await LocalStorageService.getAll('listings');
-      const farmerListings = allListings.filter((listing: any) => listing.farmerId === currentUser?.id);
+      // Load listings
+      let allListings: any[] = [];
+      if (useSupabaseBackend) {
+        allListings = await APIService.get('listings', {
+          orderBy: { column: 'created_at', ascending: false }
+        });
+        // Normalize field names
+        allListings = allListings.map((listing: any) => ({
+          ...listing,
+          farmerId: listing.farmer_id || listing.farmerId,
+          availability: listing.status === 'approved' || listing.status === 'live' 
+            ? 'available' 
+            : listing.availability || 'pending',
+        }));
+      } else {
+        allListings = await LocalStorageService.getAll('listings');
+      }
+      
+      const farmerListings = allListings.filter((listing: any) => 
+        (listing.farmerId || listing.farmer_id) === currentUser?.id
+      );
       
       const totalListings = farmerListings.length;
-      const activeListings = farmerListings.filter((listing: any) => listing.availability === 'available').length;
-      const pendingListings = farmerListings.filter((listing: any) => listing.availability === 'pending').length;
+      const activeListings = farmerListings.filter((listing: any) => 
+        listing.status === 'approved' || listing.status === 'live' || 
+        (listing.status !== 'rejected' && listing.availability === 'available')
+      ).length;
+      const pendingListings = farmerListings.filter((listing: any) => 
+        listing.status === 'pending'
+      ).length;
       
-      const allBookings = await LocalStorageService.getAll('bookings');
-      const farmerBookings = allBookings.filter((booking: any) => booking.farmerId === currentUser?.id);
+      // Load bookings (BookingService already handles Supabase)
+      const allBookings = useSupabaseBackend 
+        ? await APIService.get('bookings', {
+            orderBy: { column: 'created_at', ascending: false }
+          })
+        : await LocalStorageService.getAll('bookings');
+      
+      // Normalize booking field names
+      const normalizedBookings = allBookings.map((booking: any) => ({
+        ...booking,
+        farmerId: booking.farmer_id || booking.farmerId,
+        camperId: booking.camper_id || booking.camperId,
+        listingId: booking.listing_id || booking.listingId,
+      }));
+      
+      const farmerBookings = normalizedBookings.filter((booking: any) => 
+        (booking.farmerId || booking.farmer_id) === currentUser?.id
+      );
       
       const totalBookings = farmerBookings.length;
       const upcomingBookings = farmerBookings.filter((booking: any) => 

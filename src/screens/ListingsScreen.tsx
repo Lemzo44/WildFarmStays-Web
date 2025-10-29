@@ -3,6 +3,8 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, FlatLi
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { LocalStorageService } from '../services/LocalStorageService';
+import { APIService } from '../services/APIService';
+import { useSupabase } from '../lib/supabase';
 import { FavoritesService } from '../services/FavoritesService';
 import { ReviewService } from '../services/ReviewService';
 import { MessageService } from '../services/MessageService';
@@ -33,16 +35,49 @@ export default function ListingsScreen({ onNavigate }: ListingsScreenProps = {})
 
   const loadListings = async () => {
     try {
-      const allListings = await LocalStorageService.getAll('listings');
+      let allListings: any[] = [];
+      const useSupabaseBackend = useSupabase;
+
+      if (useSupabaseBackend) {
+        // Fetch from Supabase
+        allListings = await APIService.get('listings', {
+          orderBy: { column: 'created_at', ascending: false }
+        });
+        
+        // Normalize field names (snake_case -> camelCase) for compatibility
+        allListings = allListings.map((listing: any) => ({
+          ...listing,
+          farmerId: listing.farmer_id || listing.farmerId,
+          maxGuests: listing.max_guests || listing.maxGuests,
+          pricePerNight: listing.price_per_night || listing.price_per_night || listing.price,
+          wildnessRating: listing.wildness_rating || listing.wildnessRating,
+          parkingLocation: listing.parking_location || listing.parkingLocation,
+          cancellationPolicy: listing.cancellation_policy || listing.cancellationPolicy,
+          seasonalHighlights: listing.seasonal_highlights || listing.seasonalHighlights,
+          reviewCount: listing.review_count || listing.reviewCount || 0,
+          // Handle availability/status mapping
+          availability: listing.status === 'approved' || listing.status === 'live' 
+            ? 'available' 
+            : listing.availability || 'pending',
+        }));
+      } else {
+        // Fallback to localStorage
+        allListings = await LocalStorageService.getAll('listings');
+      }
       
       // Filter listings based on user role
       let filteredListings = allListings;
       if (isFarmer && currentUser) {
         // Farmers see all their listings (including pending for approval)
-        filteredListings = allListings.filter((listing: any) => listing.farmerId === currentUser.id);
+        filteredListings = allListings.filter((listing: any) => 
+          (listing.farmerId || listing.farmer_id) === currentUser.id
+        );
       } else {
-        // Campers only see available listings (pending listings require admin approval)
-        filteredListings = allListings.filter((listing: any) => listing.availability === 'available');
+        // Campers only see approved/live listings
+        filteredListings = allListings.filter((listing: any) => 
+          listing.status === 'approved' || listing.status === 'live' || 
+          (listing.status !== 'rejected' && listing.availability === 'available')
+        );
       }
       
       setListings(filteredListings);

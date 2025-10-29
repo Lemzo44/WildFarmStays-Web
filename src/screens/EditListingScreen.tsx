@@ -3,6 +3,8 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { LocalStorageService } from '../services/LocalStorageService';
+import { APIService } from '../services/APIService';
+import { useSupabase } from '../lib/supabase';
 
 interface EditListingScreenProps {
   listing?: any;
@@ -380,42 +382,76 @@ export default function EditListingScreen({ listing, onNavigate }: EditListingSc
 
     try {
       setLoading(true);
+      const useSupabaseBackend = useSupabase;
+      const listingId = currentListing.id || currentListing.id;
       
       // Check if this was a rejected listing being resubmitted
-      const isResubmission = currentListing.availability === 'rejected';
+      const isResubmission = currentListing.status === 'rejected' || currentListing.availability === 'rejected';
       
-      const updatedListingData = {
-        ...currentListing,
-        title: formData.title.trim(),
-        description: formData.description.trim(),
-        price: parseFloat(formData.price),
-        address: formData.address.trim(),
-        postcode: formData.postcode.trim(),
-        county: formData.county.trim(),
-        location: formData.location.trim(),
-        parkingLocation: formData.parkingLocation.trim(),
-        cancellationPolicy: formData.cancellationPolicy.trim(),
-        coordinates: formData.coordinates,
-        latitude: formData.coordinates?.latitude || currentListing.latitude || 54.7024,
-        longitude: formData.coordinates?.longitude || currentListing.longitude || -3.2766,
-        amenities: formData.amenities,
-        restrictions: formData.restrictions,
-        seasonalHighlights: formData.seasonalHighlights,
-        wildnessRating: formData.wildnessRating,
-        maxGuests: formData.maxGuests,
-        images: formData.images.length > 0 ? formData.images : currentListing.images || ['https://example.com/farm.jpg'],
-        availableDays: formData.availableDays,
-        checkInTime: formData.checkInTime,
-        checkOutTime: formData.checkOutTime,
-        blackoutDates: formData.blackoutDates,
-        // If resubmitting a rejected listing, set to pending
-        availability: isResubmission ? 'pending' : currentListing.availability,
-        // Clear rejection info if resubmitting
-        ...(isResubmission && { rejectionReason: undefined, rejectedAt: undefined }),
-        updatedAt: new Date().toISOString(),
-      };
+      if (useSupabaseBackend) {
+        // Map to Supabase schema (snake_case)
+        const supabaseUpdateData: any = {
+          title: formData.title.trim(),
+          description: formData.description.trim(),
+          location: formData.location.trim(),
+          address: formData.address.trim() || null,
+          postcode: formData.postcode.trim() || null,
+          county: formData.county.trim() || null,
+          latitude: formData.coordinates?.latitude || currentListing.latitude || null,
+          longitude: formData.coordinates?.longitude || currentListing.longitude || null,
+          price: parseFloat(formData.price) || 0,
+          price_per_night: parseFloat(formData.price) || 0,
+          max_guests: formData.maxGuests || 4,
+          amenities: formData.amenities.length > 0 ? formData.amenities : [],
+          restrictions: formData.restrictions.length > 0 ? formData.restrictions : [],
+          seasonal_highlights: formData.seasonalHighlights.length > 0 ? formData.seasonalHighlights : [],
+          images: formData.images.length > 0 ? formData.images : (currentListing.images || ['https://example.com/farm.jpg']),
+          parking_location: formData.parkingLocation.trim() || null,
+          cancellation_policy: formData.cancellationPolicy.trim() || null,
+          wildness_rating: formData.wildnessRating || 3,
+        };
 
-      await LocalStorageService.save('listings', updatedListingData);
+        // If resubmitting a rejected listing, set status to pending
+        if (isResubmission) {
+          supabaseUpdateData.status = 'pending';
+          supabaseUpdateData.availability = 'pending';
+          supabaseUpdateData.rejection_reason = null;
+        }
+
+        await APIService.update('listings', listingId, supabaseUpdateData);
+      } else {
+        // Fallback to localStorage
+        const updatedListingData = {
+          ...currentListing,
+          title: formData.title.trim(),
+          description: formData.description.trim(),
+          price: parseFloat(formData.price),
+          address: formData.address.trim(),
+          postcode: formData.postcode.trim(),
+          county: formData.county.trim(),
+          location: formData.location.trim(),
+          parkingLocation: formData.parkingLocation.trim(),
+          cancellationPolicy: formData.cancellationPolicy.trim(),
+          coordinates: formData.coordinates,
+          latitude: formData.coordinates?.latitude || currentListing.latitude || 54.7024,
+          longitude: formData.coordinates?.longitude || currentListing.longitude || -3.2766,
+          amenities: formData.amenities,
+          restrictions: formData.restrictions,
+          seasonalHighlights: formData.seasonalHighlights,
+          wildnessRating: formData.wildnessRating,
+          maxGuests: formData.maxGuests,
+          images: formData.images.length > 0 ? formData.images : currentListing.images || ['https://example.com/farm.jpg'],
+          availableDays: formData.availableDays,
+          checkInTime: formData.checkInTime,
+          checkOutTime: formData.checkOutTime,
+          blackoutDates: formData.blackoutDates,
+          availability: isResubmission ? 'pending' : currentListing.availability,
+          ...(isResubmission && { rejectionReason: undefined, rejectedAt: undefined }),
+          updatedAt: new Date().toISOString(),
+        };
+
+        await LocalStorageService.save('listings', updatedListingData);
+      }
       
       if (isResubmission) {
         alert('Listing resubmitted successfully! It will be reviewed by our admin team before going live.');
@@ -879,12 +915,27 @@ export default function EditListingScreen({ listing, onNavigate }: EditListingSc
             style={styles.approveButtonAdmin}
             onPress={async () => {
               if (currentListing) {
-                const listing = await LocalStorageService.getById('listings', currentListing.id);
-                if (listing) {
-                  listing.availability = 'available';
-                  await LocalStorageService.save('listings', listing);
+                const listingId = currentListing.id;
+                const useSupabaseBackend = useSupabase;
+                
+                try {
+                  if (useSupabaseBackend) {
+                    await APIService.update('listings', listingId, {
+                      status: 'approved',
+                      availability: 'available'
+                    });
+                  } else {
+                    const listing = await LocalStorageService.getById('listings', listingId);
+                    if (listing) {
+                      listing.availability = 'available';
+                      await LocalStorageService.save('listings', listing);
+                    }
+                  }
                   alert('Listing approved successfully!');
                   onNavigate?.('listing-management');
+                } catch (error: any) {
+                  console.error('Error approving listing:', error);
+                  alert(`Failed to approve listing: ${error.message || 'Unknown error'}`);
                 }
               }
             }}
@@ -900,17 +951,31 @@ export default function EditListingScreen({ listing, onNavigate }: EditListingSc
               
               if (rejectionReason && rejectionReason.trim()) {
                 if (currentListing) {
-                  // Store rejection reason and mark as rejected instead of deleting
-                  const listing = await LocalStorageService.getById('listings', currentListing.id);
-                  if (listing) {
-                    listing.rejectionReason = rejectionReason;
-                    listing.rejectedAt = new Date().toISOString();
-                    listing.availability = 'rejected'; // Mark as rejected so farmer can see
-                    await LocalStorageService.save('listings', listing);
-                  }
+                  const listingId = currentListing.id;
+                  const useSupabaseBackend = useSupabase;
                   
-                  alert('Listing rejected. Farmer can see the feedback and resubmit.');
-                  onNavigate?.('listing-management');
+                  try {
+                    if (useSupabaseBackend) {
+                      await APIService.update('listings', listingId, {
+                        status: 'rejected',
+                        rejection_reason: rejectionReason
+                      });
+                    } else {
+                      const listing = await LocalStorageService.getById('listings', listingId);
+                      if (listing) {
+                        listing.rejectionReason = rejectionReason;
+                        listing.rejectedAt = new Date().toISOString();
+                        listing.availability = 'rejected';
+                        await LocalStorageService.save('listings', listing);
+                      }
+                    }
+                    
+                    alert('Listing rejected. Farmer can see the feedback and resubmit.');
+                    onNavigate?.('listing-management');
+                  } catch (error: any) {
+                    console.error('Error rejecting listing:', error);
+                    alert(`Failed to reject listing: ${error.message || 'Unknown error'}`);
+                  }
                 }
               } else if (rejectionReason !== null) {
                 // User pressed OK without entering a reason

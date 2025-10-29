@@ -3,6 +3,8 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView } from 
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { LocalStorageService } from '../services/LocalStorageService';
+import { APIService } from '../services/APIService';
+import { useSupabase } from '../lib/supabase';
 import { ReviewService } from '../services/ReviewService';
 import WebMap from '../components/WebMap';
 import WebMarker from '../components/WebMarker';
@@ -35,9 +37,34 @@ export default function SearchScreen() {
 
   const loadListings = async () => {
     try {
-      const allListings = await LocalStorageService.getAll('listings');
+      const useSupabaseBackend = useSupabase;
+      let allListings: any[] = [];
+
+      if (useSupabaseBackend) {
+        allListings = await APIService.get('listings', {
+          orderBy: { column: 'created_at', ascending: false }
+        });
+        
+        // Normalize field names
+        allListings = allListings.map((listing: any) => ({
+          ...listing,
+          farmerId: listing.farmer_id || listing.farmerId,
+          maxGuests: listing.max_guests || listing.maxGuests,
+          pricePerNight: listing.price_per_night || listing.price,
+          wildnessRating: listing.wildness_rating || listing.wildnessRating,
+          availability: listing.status === 'approved' || listing.status === 'live' 
+            ? 'available' 
+            : listing.availability || 'pending',
+        }));
+      } else {
+        allListings = await LocalStorageService.getAll('listings');
+      }
+      
       // Only show available listings to campers (pending listings require admin approval)
-      const availableListings = allListings.filter((listing: any) => listing.availability === 'available');
+      const availableListings = allListings.filter((listing: any) => 
+        listing.status === 'approved' || listing.status === 'live' || 
+        (listing.status !== 'rejected' && listing.availability === 'available')
+      );
       console.log('📋 All listings loaded:', allListings.length);
       console.log('✅ Available listings:', availableListings.length);
       setListings(availableListings);
