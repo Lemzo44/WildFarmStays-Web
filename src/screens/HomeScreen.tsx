@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { LocalStorageService } from '../services/LocalStorageService';
+import { BookingService } from '../services/BookingService';
+import { useSupabase } from '../lib/supabase';
 import FarmerHomeScreen from './FarmerHomeScreen';
 
 interface HomeScreenProps {
@@ -28,11 +30,16 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps = {}) {
     try {
       setLoading(true);
       
-      // Load actual booking data from localStorage
-      const allBookings = await LocalStorageService.getAll('bookings');
-      const userBookings = allBookings.filter((booking: any) => 
-        booking.camperId === currentUser?.id || booking.camperId === '1' // Include mock bookings for testing
-      );
+      // Load bookings from Supabase when enabled; otherwise fallback to localStorage
+      let userBookings: any[] = [];
+      if (useSupabase && currentUser?.id) {
+        userBookings = await BookingService.getUserBookings(currentUser.id, 'camper');
+      } else {
+        const allBookings = await LocalStorageService.getAll('bookings');
+        userBookings = allBookings.filter((booking: any) => 
+          booking.camperId === currentUser?.id || booking.camperId === '1'
+        );
+      }
 
       const mockFavorites = [
         {
