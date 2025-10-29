@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { LocalStorageService } from '../services/LocalStorageService';
+import { BookingManagementService } from '../services/BookingManagementService';
 
 interface AdminBookingDetailsProps {
   booking?: any;
@@ -9,6 +10,29 @@ interface AdminBookingDetailsProps {
 
 export default function AdminBookingDetails({ booking, onNavigate }: AdminBookingDetailsProps) {
   const [bookingData, setBookingData] = useState(booking);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (booking?.id && !bookingData?.listingTitle) {
+      loadFullBookingDetails();
+    }
+  }, [booking?.id]);
+
+  const loadFullBookingDetails = async () => {
+    if (!booking?.id) return;
+    
+    try {
+      setLoading(true);
+      const details = await BookingManagementService.getBookingDetails(booking.id);
+      if (details) {
+        setBookingData(details);
+      }
+    } catch (error) {
+      console.error('Error loading booking details:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleConfirmBooking = async () => {
     Alert.alert(
@@ -20,11 +44,15 @@ export default function AdminBookingDetails({ booking, onNavigate }: AdminBookin
           text: 'Confirm',
           onPress: async () => {
             try {
-              if (bookingData) {
-                bookingData.status = 'confirmed';
-                await LocalStorageService.save('bookings', bookingData);
-                Alert.alert('Success', 'Booking confirmed successfully');
-                onNavigate?.('booking-management');
+              if (bookingData?.id) {
+                const result = await BookingManagementService.confirmBooking(bookingData.id);
+                if (result.success) {
+                  Alert.alert('Success', result.message);
+                  await loadFullBookingDetails(); // Reload to get updated status
+                  onNavigate?.('booking-management');
+                } else {
+                  Alert.alert('Error', result.message);
+                }
               }
             } catch (error) {
               Alert.alert('Error', 'Failed to confirm booking');
@@ -36,9 +64,10 @@ export default function AdminBookingDetails({ booking, onNavigate }: AdminBookin
   };
 
   const handleCancelBooking = async () => {
+    const refundAmount = bookingData?.totalPrice || bookingData?.total_price || 0;
     Alert.alert(
       'Cancel Booking',
-      `Cancel this booking and issue £${bookingData?.totalPrice || 0} refund?`,
+      `Cancel this booking and issue £${refundAmount} refund?`,
       [
         { text: 'No', style: 'cancel' },
         {
@@ -46,11 +75,15 @@ export default function AdminBookingDetails({ booking, onNavigate }: AdminBookin
           style: 'destructive',
           onPress: async () => {
             try {
-              if (bookingData) {
-                bookingData.status = 'cancelled';
-                await LocalStorageService.save('bookings', bookingData);
-                Alert.alert('Success', `Booking cancelled and £${bookingData.totalPrice} refund issued`);
-                onNavigate?.('booking-management');
+              if (bookingData?.id) {
+                const result = await BookingManagementService.cancelBooking(bookingData.id);
+                if (result.success) {
+                  Alert.alert('Success', `Booking cancelled and £${refundAmount} refund issued`);
+                  await loadFullBookingDetails(); // Reload to get updated status
+                  onNavigate?.('booking-management');
+                } else {
+                  Alert.alert('Error', result.message);
+                }
               }
             } catch (error) {
               Alert.alert('Error', 'Failed to cancel booking');
@@ -111,13 +144,13 @@ export default function AdminBookingDetails({ booking, onNavigate }: AdminBookin
         <View style={styles.infoCard}>
           <Text style={styles.label}>Booking Dates</Text>
           <Text style={styles.value}>
-            {bookingData.startDate} to {bookingData.endDate}
+            {bookingData.startDate || bookingData.start_date} to {bookingData.endDate || bookingData.end_date}
           </Text>
         </View>
 
         <View style={styles.infoCard}>
           <Text style={styles.label}>Total Price</Text>
-          <Text style={styles.value}>£{bookingData.totalPrice || 0}</Text>
+          <Text style={styles.value}>£{bookingData.totalPrice || bookingData.total_price || 0}</Text>
         </View>
 
         <View style={styles.infoCard}>
@@ -132,7 +165,9 @@ export default function AdminBookingDetails({ booking, onNavigate }: AdminBookin
         <View style={styles.infoCard}>
           <Text style={styles.label}>Created At</Text>
           <Text style={styles.value}>
-            {bookingData.createdAt ? new Date(bookingData.createdAt).toLocaleString() : 'N/A'}
+            {(bookingData.createdAt || bookingData.created_at) 
+              ? new Date(bookingData.createdAt || bookingData.created_at).toLocaleString() 
+              : 'N/A'}
           </Text>
         </View>
       </View>
@@ -143,10 +178,10 @@ export default function AdminBookingDetails({ booking, onNavigate }: AdminBookin
         
         <TouchableOpacity 
           style={styles.infoCard}
-          onPress={() => onNavigate?.('user-details', { id: bookingData.camperId })}
+          onPress={() => onNavigate?.('user-details', { id: bookingData.camperId || bookingData.camper_id })}
         >
           <Text style={styles.label}>Customer Name</Text>
-          <Text style={styles.value}>{bookingData.camperName}</Text>
+          <Text style={styles.value}>{bookingData.camperName || 'Unknown Camper'}</Text>
           <Text style={styles.linkText}>View customer details →</Text>
         </TouchableOpacity>
       </View>
@@ -157,10 +192,10 @@ export default function AdminBookingDetails({ booking, onNavigate }: AdminBookin
         
         <TouchableOpacity 
           style={styles.infoCard}
-          onPress={() => onNavigate?.('user-details', { id: bookingData.farmerId })}
+          onPress={() => onNavigate?.('user-details', { id: bookingData.farmerId || bookingData.farmer_id })}
         >
-          <Text style={styles.label}>Farmer ID</Text>
-          <Text style={styles.value}>{bookingData.farmerId}</Text>
+          <Text style={styles.label}>Farmer</Text>
+          <Text style={styles.value}>{bookingData.farmerName || bookingData.farmerId || bookingData.farmer_id || 'Unknown Farmer'}</Text>
           <Text style={styles.linkText}>View farmer details →</Text>
         </TouchableOpacity>
       </View>

@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, FlatList } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { MessageService } from '../services/MessageService';
+import { APIService } from '../services/APIService';
+import { useSupabase } from '../lib/supabase';
 
 export default function MessagesScreen() {
   const { currentUser } = useAuth();
@@ -12,75 +15,113 @@ export default function MessagesScreen() {
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Simple mock conversations for testing
-  const mockConversations = [
-    {
-      id: 'conv1',
-      otherUser: {
-        id: '2',
-        name: 'Sarah Farmer',
-        avatar: '🚜'
-      },
-      listing: {
-        title: 'Green Valley Farm'
-      },
-      lastMessage: {
-        text: 'Thanks for your interest! The farm is available for your dates.',
-        timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
-      },
-      unreadCount: 2
-    },
-    {
-      id: 'conv2',
-      otherUser: {
-        id: '1',
-        name: 'John Camper',
-        avatar: '🏕️'
-      },
-      listing: {
-        title: 'Sunset Meadows'
-      },
-      lastMessage: {
-        text: 'Looking forward to my stay next week!',
-        timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-      },
-      unreadCount: 0
-    }
-  ];
-
-  // Simple mock messages for testing - realistic conversation
-  const mockMessages = [
-    {
-      id: 'msg1',
-      senderId: '1', // Camper asking about the farm
-      text: 'Hi! I\'m interested in booking your farm for next weekend.',
-      timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString()
-    },
-    {
-      id: 'msg2',
-      senderId: '2', // Farmer responding
-      text: 'Thanks for your interest! The farm is available for your dates.',
-      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
-    },
-    {
-      id: 'msg3',
-      senderId: '1', // Camper asking follow-up
-      text: 'Perfect! Can you tell me more about the amenities?',
-      timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString()
-    }
-  ];
-
   useEffect(() => {
-    // Load mock conversations immediately
-    setConversations(mockConversations);
-    console.log('MessagesScreen loaded with mock conversations:', mockConversations.length);
-  }, []);
+    loadConversations();
+  }, [currentUser]);
 
   useEffect(() => {
     if (selectedConversation) {
-      setMessages(mockMessages);
+      loadMessages();
+      // Mark messages as read when opening conversation
+      if (currentUser) {
+        MessageService.markMessagesAsRead(selectedConversation.id, currentUser.id).catch(console.error);
+      }
     }
   }, [selectedConversation]);
+
+  const loadConversations = async () => {
+    if (!currentUser) return;
+    
+    try {
+      setLoading(true);
+      const conversationList = await MessageService.getUserConversations(currentUser.id);
+      
+      // Transform to UI format and fetch user names
+      const formattedConversations = await Promise.all(
+        conversationList.map(async (conv: any) => {
+          const otherUserId = conv.participants.find((id: string) => id !== currentUser.id);
+          if (!otherUserId) return null;
+          
+          // Fetch other user's profile
+          let otherUser: any = null;
+          try {
+            if (useSupabase) {
+              otherUser = await APIService.getById('profiles', otherUserId);
+            }
+          } catch (error) {
+            console.error('Error fetching user profile:', error);
+          }
+          
+          const firstName = otherUser?.first_name || otherUser?.firstName || 'User';
+          const lastName = otherUser?.last_name || otherUser?.lastName || '';
+          const userName = `${firstName} ${lastName}`.trim() || 'User';
+          
+          // Fetch listing if available (from first message)
+          let listingTitle = 'Farm Listing';
+          try {
+            const convMessages = await MessageService.getConversationMessages(conv.id);
+            if (convMessages.length > 0 && convMessages[0].listingId) {
+              const listing = useSupabase
+                ? await APIService.getById('listings', convMessages[0].listingId)
+                : null;
+              if (listing) {
+                listingTitle = listing.title || listingTitle;
+              }
+            }
+          } catch (error) {
+            console.error('Error fetching listing:', error);
+          }
+          
+          return {
+            id: conv.id,
+            otherUser: {
+              id: otherUserId,
+              name: userName,
+              avatar: otherUser?.role === 'farmer' ? '🚜' : '🏕️'
+            },
+            listing: {
+              title: listingTitle
+            },
+            lastMessage: {
+              text: conv.lastMessage,
+              timestamp: conv.lastMessageTime
+            },
+            unreadCount: conv.unreadCount
+          };
+        })
+      );
+      
+      // Filter out nulls and set conversations
+      setConversations(formattedConversations.filter((c: any) => c !== null));
+    } catch (error) {
+      console.error('Error loading conversations:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadMessages = async () => {
+    if (!selectedConversation || !currentUser) return;
+    
+    try {
+      setLoading(true);
+      const conversationMessages = await MessageService.getConversationMessages(selectedConversation.id);
+      
+      // Transform to UI format
+      const formattedMessages = conversationMessages.map((msg: any) => ({
+        id: msg.id,
+        senderId: msg.senderId,
+        text: msg.content,
+        timestamp: msg.timestamp
+      }));
+      
+      setMessages(formattedMessages);
+    } catch (error) {
+      console.error('Error loading messages:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const formatTimestamp = (timestamp: string) => {
     const date = new Date(timestamp);
@@ -101,32 +142,36 @@ export default function MessagesScreen() {
   };
 
   const handleSendMessage = async () => {
-    if (newMessage.trim() === '' || !selectedConversation) return;
+    if (newMessage.trim() === '' || !selectedConversation || !currentUser) return;
 
     try {
-      // Ensure we have a valid user ID
-      const senderId = String(currentUser?.id || '1');
+      const otherUserId = selectedConversation.otherUser.id;
+      const senderName = `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || currentUser.email || 'User';
       
-      // Simple message sending - just add to local state
-      const newMsg = {
-        id: Date.now().toString(),
-        senderId: senderId,
-        text: newMessage.trim(),
-        timestamp: new Date().toISOString()
-      };
-      
-      console.log('Sending message:', {
-        newMsg,
-        currentUser: currentUser,
-        currentUserId: currentUser?.id,
-        senderId: senderId
+      // Send message via MessageService
+      const sentMessage = await MessageService.sendMessage({
+        conversationId: selectedConversation.id,
+        senderId: currentUser.id,
+        senderName: senderName,
+        receiverId: otherUserId,
+        content: newMessage.trim(),
+        listingId: selectedConversation.listing?.id,
       });
       
-      setMessages(prev => [...prev, newMsg]);
+      // Add to local state for immediate UI update
+      setMessages(prev => [...prev, {
+        id: sentMessage.id,
+        senderId: sentMessage.senderId,
+        text: sentMessage.content,
+        timestamp: sentMessage.timestamp
+      }]);
       setNewMessage('');
-      console.log('Message sent successfully:', newMsg);
+      
+      // Reload conversations to update last message
+      loadConversations();
     } catch (error) {
       console.error('Error sending message:', error);
+      alert('Failed to send message. Please try again.');
     }
   };
 

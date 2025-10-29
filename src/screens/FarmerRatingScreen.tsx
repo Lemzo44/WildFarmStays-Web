@@ -3,6 +3,8 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, FlatLi
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { LocalStorageService } from '../services/LocalStorageService';
+import { APIService } from '../services/APIService';
+import { useSupabase } from '../lib/supabase';
 import { FarmerRatingService } from '../services/FarmerRatingService';
 
 interface FarmerRatingScreenProps {
@@ -29,17 +31,45 @@ export default function FarmerRatingScreen({ bookingId, onNavigate }: FarmerRati
   const loadBookingsToRate = async () => {
     try {
       setLoading(true);
+      const useSupabaseBackend = useSupabase;
       
       // Get all bookings
-      const allBookings = await LocalStorageService.getAll('bookings');
+      const allBookings = useSupabaseBackend
+        ? await APIService.get('bookings', {
+            orderBy: { column: 'created_at', ascending: false }
+          })
+        : await LocalStorageService.getAll('bookings');
+      
+      // Normalize bookings
+      const normalizedBookings = allBookings.map((booking: any) => ({
+        ...booking,
+        farmerId: booking.farmer_id || booking.farmerId,
+        camperId: booking.camper_id || booking.camperId,
+        listingId: booking.listing_id || booking.listingId,
+      }));
       
       // Get farmer's listings
-      const allListings = await LocalStorageService.getAll('listings');
-      const farmerListings = allListings.filter((listing: any) => listing.farmerId === currentUser?.id);
+      const allListings = useSupabaseBackend
+        ? await APIService.get('listings', {
+            orderBy: { column: 'created_at', ascending: false }
+          })
+        : await LocalStorageService.getAll('listings');
+      
+      // Normalize listings
+      const normalizedListings = allListings.map((listing: any) => ({
+        ...listing,
+        farmerId: listing.farmer_id || listing.farmerId,
+      }));
+      
+      const farmerListings = normalizedListings.filter((listing: any) => 
+        listing.farmerId === currentUser?.id
+      );
       
       // Get bookings for farmer's listings that are completed
-      const farmerBookings = allBookings.filter((booking: any) => {
-        const isFarmerListing = farmerListings.some((listing: any) => listing.id === booking.listingId);
+      const farmerBookings = normalizedBookings.filter((booking: any) => {
+        const isFarmerListing = farmerListings.some((listing: any) => 
+          listing.id === booking.listingId
+        );
         return isFarmerListing && booking.status === 'completed';
       });
 
@@ -47,19 +77,30 @@ export default function FarmerRatingScreen({ bookingId, onNavigate }: FarmerRati
       const bookingsToRate = [];
       for (const booking of farmerBookings) {
         const hasRated = await FarmerRatingService.hasFarmerRatedCamper(
-          currentUser?.id || '1', 
-          booking.camperId, 
-          booking.id
+          currentUser?.id || '', 
+          booking.camperId || booking.camper_id
         );
         if (!hasRated) {
           // Load camper name
-          const camper = await LocalStorageService.getById('users', booking.camperId);
-          const listing = await LocalStorageService.getById('listings', booking.listingId);
+          let camper: any = null;
+          let listing: any = null;
+          
+          if (useSupabaseBackend) {
+            camper = await APIService.getById('profiles', booking.camperId || booking.camper_id);
+            listing = await APIService.getById('listings', booking.listingId || booking.listing_id);
+          } else {
+            camper = await LocalStorageService.getById('users', booking.camperId);
+            listing = await LocalStorageService.getById('listings', booking.listingId);
+          }
+          
+          const firstName = camper?.first_name || camper?.firstName || '';
+          const lastName = camper?.last_name || camper?.lastName || '';
+          const camperNameStr = `${firstName} ${lastName}`.trim() || 'Unknown';
           
           bookingsToRate.push({
             ...booking,
-            camperName: camper ? `${camper.firstName} ${camper.lastName}` : 'Unknown',
-            listingTitle: listing ? listing.title : 'Unknown Listing',
+            camperName: camperNameStr,
+            listingTitle: listing?.title || 'Unknown Listing',
           });
         }
       }

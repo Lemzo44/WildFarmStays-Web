@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
 import { LocalStorageService } from '../services/LocalStorageService';
+import { APIService } from '../services/APIService';
+import { useSupabase } from '../lib/supabase';
 
 interface TicketDetailsProps {
   ticket?: any;
@@ -12,17 +14,57 @@ export default function TicketDetails({ ticket, onNavigate }: TicketDetailsProps
   const [responseText, setResponseText] = useState('');
   const [newStatus, setNewStatus] = useState(ticket?.status || 'open');
 
+  useEffect(() => {
+    if (ticket?.id && !ticketData?.message) {
+      loadTicketDetails();
+    }
+  }, [ticket?.id]);
+
+  const loadTicketDetails = async () => {
+    if (!ticket?.id) return;
+    try {
+      if (useSupabase) {
+        const details = await APIService.getById('support_tickets', ticket.id);
+        if (details) {
+          setTicketData({
+            ...details,
+            userName: details.name || details.userName,
+            userEmail: details.email || details.userEmail,
+            userId: details.user_id || details.userId,
+            createdAt: details.created_at || details.createdAt,
+          });
+          setNewStatus(details.status || 'open');
+        }
+      }
+    } catch (error) {
+      console.error('Error loading ticket details:', error);
+    }
+  };
+
   const handleUpdateStatus = async () => {
     if (!ticketData) return;
 
     try {
-      const updatedTicket = {
-        ...ticketData,
-        status: newStatus,
-      };
-      await LocalStorageService.save('tickets', updatedTicket);
-      setTicketData(updatedTicket);
-      Alert.alert('Success', 'Ticket status updated');
+      if (useSupabase) {
+        await APIService.update('support_tickets', ticketData.id, { status: newStatus });
+        const updated = await APIService.getById('support_tickets', ticketData.id);
+        setTicketData({
+          ...updated,
+          userName: updated.name || updated.userName,
+          userEmail: updated.email || updated.userEmail,
+          userId: updated.user_id || updated.userId,
+          createdAt: updated.created_at || updated.createdAt,
+        });
+        Alert.alert('Success', 'Ticket status updated');
+      } else {
+        const updatedTicket = {
+          ...ticketData,
+          status: newStatus,
+        };
+        await LocalStorageService.save('tickets', updatedTicket);
+        setTicketData(updatedTicket);
+        Alert.alert('Success', 'Ticket status updated');
+      }
     } catch (error) {
       Alert.alert('Error', 'Failed to update ticket status');
     }
@@ -110,7 +152,9 @@ export default function TicketDetails({ ticket, onNavigate }: TicketDetailsProps
         <View style={styles.infoCard}>
           <Text style={styles.label}>Created</Text>
           <Text style={styles.value}>
-            {ticketData.createdAt ? new Date(ticketData.createdAt).toLocaleString() : 'N/A'}
+            {(ticketData.createdAt || ticketData.created_at)
+              ? new Date(ticketData.createdAt || ticketData.created_at).toLocaleString()
+              : 'N/A'}
           </Text>
         </View>
       </View>
@@ -131,7 +175,7 @@ export default function TicketDetails({ ticket, onNavigate }: TicketDetailsProps
 
         <View style={styles.infoCard}>
           <Text style={styles.label}>User ID</Text>
-          <Text style={styles.value}>{ticketData.userId || 'Guest'}</Text>
+          <Text style={styles.value}>{ticketData.userId || ticketData.user_id || 'Guest'}</Text>
         </View>
       </View>
 

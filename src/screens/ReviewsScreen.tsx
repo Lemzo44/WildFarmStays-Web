@@ -4,6 +4,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { ReviewService } from '../services/ReviewService';
 import { LocalStorageService } from '../services/LocalStorageService';
+import { APIService } from '../services/APIService';
+import { useSupabase } from '../lib/supabase';
 
 interface ReviewsScreenProps {
   listingId?: string;
@@ -42,16 +44,34 @@ export default function ReviewsScreen({ listingId, onNavigate }: ReviewsScreenPr
       
       // Load reviewer names
       const names: any = {};
+      const useSupabaseBackend = useSupabase;
+      
       for (const review of listingReviews) {
         try {
-          const reviewer = await LocalStorageService.getById('users', review.reviewerId);
-          if (reviewer) {
-            names[review.id] = `${reviewer.firstName} ${reviewer.lastName}`;
+          if (review.reviewerName && review.reviewerName !== 'Anonymous') {
+            // Use reviewerName if already provided from ReviewService
+            names[review.id] = review.reviewerName;
+          } else if (useSupabaseBackend) {
+            // Fetch from Supabase profiles
+            const reviewer = await APIService.getById('profiles', review.reviewerId);
+            if (reviewer) {
+              const firstName = reviewer.first_name || reviewer.firstName || '';
+              const lastName = reviewer.last_name || reviewer.lastName || '';
+              names[review.id] = `${firstName} ${lastName}`.trim() || 'Anonymous';
+            } else {
+              names[review.id] = 'Anonymous';
+            }
           } else {
-            names[review.id] = 'Anonymous';
+            // Fallback to localStorage
+            const reviewer = await LocalStorageService.getById('users', review.reviewerId);
+            if (reviewer) {
+              names[review.id] = `${reviewer.firstName} ${reviewer.lastName}`;
+            } else {
+              names[review.id] = 'Anonymous';
+            }
           }
         } catch (error) {
-          names[review.id] = 'Anonymous';
+          names[review.id] = review.reviewerName || 'Anonymous';
         }
       }
       setReviewerNames(names);

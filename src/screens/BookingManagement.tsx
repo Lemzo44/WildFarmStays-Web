@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
 import { LocalStorageService } from '../services/LocalStorageService';
+import { APIService } from '../services/APIService';
+import { BookingManagementService } from '../services/BookingManagementService';
+import { useSupabase } from '../lib/supabase';
 
 interface BookingManagementProps {
   onNavigate?: (screen: string, data?: any) => void;
@@ -22,7 +25,57 @@ export default function BookingManagement({ onNavigate }: BookingManagementProps
 
   const loadBookings = async () => {
     try {
-      const allBookings = await LocalStorageService.getAll('bookings');
+      let allBookings: any[] = [];
+      
+      if (useSupabase) {
+        allBookings = await APIService.get('bookings', {
+          orderBy: { column: 'created_at', ascending: false }
+        });
+        
+        // Normalize bookings and fetch related data
+        allBookings = await Promise.all(
+          allBookings.map(async (booking: any) => {
+            const normalized = {
+              ...booking,
+              camperId: booking.camper_id || booking.camperId,
+              farmerId: booking.farmer_id || booking.farmerId,
+              listingId: booking.listing_id || booking.listingId,
+              startDate: booking.start_date || booking.startDate,
+              endDate: booking.end_date || booking.endDate,
+              totalPrice: booking.total_price || booking.totalPrice,
+              createdAt: booking.created_at || booking.createdAt,
+              listingTitle: booking.listing_title || booking.listingTitle,
+              camperName: booking.camper_name || booking.camperName,
+            };
+            
+            // Fetch listing and camper names if not already present
+            if (!normalized.listingTitle && normalized.listingId) {
+              try {
+                const listing = await APIService.getById('listings', normalized.listingId);
+                normalized.listingTitle = listing?.title || 'Unknown Listing';
+              } catch (e) {
+                normalized.listingTitle = 'Unknown Listing';
+              }
+            }
+            
+            if (!normalized.camperName && normalized.camperId) {
+              try {
+                const camper = await APIService.getById('profiles', normalized.camperId);
+                const firstName = camper?.first_name || camper?.firstName || '';
+                const lastName = camper?.last_name || camper?.lastName || '';
+                normalized.camperName = `${firstName} ${lastName}`.trim() || 'Unknown Camper';
+              } catch (e) {
+                normalized.camperName = 'Unknown Camper';
+              }
+            }
+            
+            return normalized;
+          })
+        );
+      } else {
+        allBookings = await LocalStorageService.getAll('bookings');
+      }
+      
       setBookings(allBookings);
     } catch (error) {
       console.error('Error loading bookings:', error);
@@ -31,7 +84,27 @@ export default function BookingManagement({ onNavigate }: BookingManagementProps
 
   const applyFilters = async () => {
     try {
-      let allBookings = await LocalStorageService.getAll('bookings');
+      let allBookings: any[] = [];
+      
+      if (useSupabase) {
+        allBookings = await APIService.get('bookings', {
+          orderBy: { column: 'created_at', ascending: false }
+        });
+        
+        // Normalize bookings
+        allBookings = allBookings.map((b: any) => ({
+          ...b,
+          camperId: b.camper_id || b.camperId,
+          listingTitle: b.listing_title || b.listingTitle,
+          camperName: b.camper_name || b.camperName,
+          startDate: b.start_date || b.startDate,
+          endDate: b.end_date || b.endDate,
+          totalPrice: b.total_price || b.totalPrice,
+          createdAt: b.created_at || b.createdAt,
+        }));
+      } else {
+        allBookings = await LocalStorageService.getAll('bookings');
+      }
 
       // Filter by search query
       if (searchQuery) {
@@ -52,23 +125,23 @@ export default function BookingManagement({ onNavigate }: BookingManagementProps
       switch (sortBy) {
         case 'recent':
           allBookings.sort((a: any, b: any) => {
-            const dateA = new Date(a.createdAt || 0);
-            const dateB = new Date(b.createdAt || 0);
+            const dateA = new Date(a.createdAt || a.created_at || 0);
+            const dateB = new Date(b.createdAt || b.created_at || 0);
             return dateB.getTime() - dateA.getTime();
           });
           break;
         case 'oldest':
           allBookings.sort((a: any, b: any) => {
-            const dateA = new Date(a.createdAt || 0);
-            const dateB = new Date(b.createdAt || 0);
+            const dateA = new Date(a.createdAt || a.created_at || 0);
+            const dateB = new Date(b.createdAt || b.created_at || 0);
             return dateA.getTime() - dateB.getTime();
           });
           break;
         case 'price-high':
-          allBookings.sort((a: any, b: any) => (b.totalPrice || 0) - (a.totalPrice || 0));
+          allBookings.sort((a: any, b: any) => (b.totalPrice || b.total_price || 0) - (a.totalPrice || a.total_price || 0));
           break;
         case 'price-low':
-          allBookings.sort((a: any, b: any) => (a.totalPrice || 0) - (b.totalPrice || 0));
+          allBookings.sort((a: any, b: any) => (a.totalPrice || a.total_price || 0) - (b.totalPrice || b.total_price || 0));
           break;
       }
 
@@ -88,12 +161,12 @@ export default function BookingManagement({ onNavigate }: BookingManagementProps
           text: 'Confirm',
           onPress: async () => {
             try {
-              const booking = await LocalStorageService.getById('bookings', bookingId);
-              if (booking) {
-                booking.status = 'confirmed';
-                await LocalStorageService.save('bookings', booking);
-                Alert.alert('Success', 'Booking confirmed successfully');
+              const result = await BookingManagementService.confirmBooking(bookingId);
+              if (result.success) {
+                Alert.alert('Success', result.message);
                 loadBookings();
+              } else {
+                Alert.alert('Error', result.message);
               }
             } catch (error) {
               Alert.alert('Error', 'Failed to confirm booking');
@@ -115,12 +188,14 @@ export default function BookingManagement({ onNavigate }: BookingManagementProps
           style: 'destructive',
           onPress: async () => {
             try {
-              const booking = await LocalStorageService.getById('bookings', bookingId);
-              if (booking) {
-                booking.status = 'cancelled';
-                await LocalStorageService.save('bookings', booking);
-                Alert.alert('Success', refundAmount ? `Booking cancelled and £${refundAmount} refunded` : 'Booking cancelled successfully');
+              const result = await BookingManagementService.cancelBooking(bookingId);
+              if (result.success) {
+                Alert.alert('Success', refundAmount 
+                  ? `Booking cancelled and £${refundAmount} refunded` 
+                  : result.message);
                 loadBookings();
+              } else {
+                Alert.alert('Error', result.message);
               }
             } catch (error) {
               Alert.alert('Error', 'Failed to cancel booking');
@@ -250,7 +325,7 @@ export default function BookingManagement({ onNavigate }: BookingManagementProps
                 📅 {booking.startDate} - {booking.endDate}
               </Text>
               <View style={styles.bookingMeta}>
-                <Text style={styles.bookingPrice}>£{booking.totalPrice || 0}</Text>
+                <Text style={styles.bookingPrice}>£{booking.totalPrice || booking.total_price || 0}</Text>
                 <View style={[styles.statusBadge, booking.status === 'confirmed' && styles.statusBadgeConfirmed, booking.status === 'pending' && styles.statusBadgePending, booking.status === 'cancelled' && styles.statusBadgeCancelled]}>
                   <Text style={[styles.statusText, booking.status === 'confirmed' && styles.statusTextConfirmed, booking.status === 'pending' && styles.statusTextPending, booking.status === 'cancelled' && styles.statusTextCancelled]}>
                     {booking.status || 'unknown'}

@@ -1,4 +1,6 @@
 import { LocalStorageService } from './LocalStorageService';
+import { APIService } from './APIService';
+import { useSupabase } from '../lib/supabase';
 
 export interface Review {
   id: string;
@@ -7,6 +9,9 @@ export interface Review {
   reviewerName: string;
   rating: number;
   comment: string;
+  title?: string;
+  approved?: boolean;
+  bookingId?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -23,15 +28,46 @@ export class ReviewService {
    */
   static async createReview(reviewData: Omit<Review, 'id' | 'createdAt' | 'updatedAt'>): Promise<Review> {
     try {
-      const review: Review = {
-        ...reviewData,
-        id: Date.now().toString(),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
+      if (useSupabase) {
+        // Map to Supabase schema
+        const supabaseReviewData = {
+          listing_id: reviewData.listingId,
+          reviewer_id: reviewData.reviewerId,
+          booking_id: reviewData.bookingId || null,
+          rating: reviewData.rating,
+          title: reviewData.title || null,
+          comment: reviewData.comment || null,
+          approved: reviewData.approved || false,
+        };
 
-      await LocalStorageService.save('reviews', review);
-      return review;
+        const created = await APIService.create('reviews', supabaseReviewData);
+        
+        // Normalize response
+        return {
+          id: created.id,
+          listingId: created.listing_id || created.listingId,
+          reviewerId: created.reviewer_id || created.reviewerId,
+          reviewerName: reviewData.reviewerName, // Keep from input
+          rating: created.rating,
+          comment: created.comment || '',
+          title: created.title || undefined,
+          approved: created.approved || false,
+          bookingId: created.booking_id || created.bookingId,
+          createdAt: created.created_at || created.createdAt || new Date().toISOString(),
+          updatedAt: created.updated_at || created.updatedAt || new Date().toISOString(),
+        };
+      } else {
+        // Fallback to localStorage
+        const review: Review = {
+          ...reviewData,
+          id: Date.now().toString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+
+        await LocalStorageService.save('reviews', review);
+        return review;
+      }
     } catch (error) {
       console.error('Error creating review:', error);
       throw new Error('Failed to create review');
@@ -43,8 +79,32 @@ export class ReviewService {
    */
   static async getListingReviews(listingId: string): Promise<Review[]> {
     try {
-      const allReviews = await LocalStorageService.getAll('reviews');
-      return allReviews.filter((review: Review) => review.listingId === listingId);
+      if (useSupabase) {
+        // Fetch reviews for this listing (only approved ones for public, all for admin)
+        const reviews = await APIService.get('reviews', {
+          filter: { column: 'listing_id', operator: 'eq', value: listingId },
+          orderBy: { column: 'created_at', ascending: false }
+        });
+        
+        // Normalize to Review interface
+        // Note: We'll need to fetch reviewer names from profiles separately if needed
+        return reviews.map((review: any) => ({
+          id: review.id,
+          listingId: review.listing_id || review.listingId,
+          reviewerId: review.reviewer_id || review.reviewerId,
+          reviewerName: review.reviewer_name || review.reviewerName || 'Anonymous', // TODO: Join with profiles
+          rating: review.rating,
+          comment: review.comment || '',
+          title: review.title || undefined,
+          approved: review.approved || false,
+          bookingId: review.booking_id || review.bookingId,
+          createdAt: review.created_at || review.createdAt || '',
+          updatedAt: review.updated_at || review.updatedAt || '',
+        }));
+      } else {
+        const allReviews = await LocalStorageService.getAll('reviews');
+        return allReviews.filter((review: Review) => review.listingId === listingId);
+      }
     } catch (error) {
       console.error('Error getting listing reviews:', error);
       throw new Error('Failed to get listing reviews');
@@ -90,10 +150,19 @@ export class ReviewService {
    */
   static async hasUserReviewed(listingId: string, userId: string): Promise<boolean> {
     try {
-      const allReviews = await LocalStorageService.getAll('reviews');
-      return allReviews.some((review: Review) => 
-        review.listingId === listingId && review.reviewerId === userId
-      );
+      if (useSupabase) {
+        const reviews = await APIService.get('reviews', {
+          filter: { column: 'listing_id', operator: 'eq', value: listingId }
+        });
+        return reviews.some((review: any) => 
+          (review.reviewer_id || review.reviewerId) === userId
+        );
+      } else {
+        const allReviews = await LocalStorageService.getAll('reviews');
+        return allReviews.some((review: Review) => 
+          review.listingId === listingId && review.reviewerId === userId
+        );
+      }
     } catch (error) {
       console.error('Error checking if user reviewed:', error);
       return false;
@@ -105,8 +174,29 @@ export class ReviewService {
    */
   static async getUserReviews(userId: string): Promise<Review[]> {
     try {
-      const allReviews = await LocalStorageService.getAll('reviews');
-      return allReviews.filter((review: Review) => review.reviewerId === userId);
+      if (useSupabase) {
+        const reviews = await APIService.get('reviews', {
+          filter: { column: 'reviewer_id', operator: 'eq', value: userId },
+          orderBy: { column: 'created_at', ascending: false }
+        });
+        
+        return reviews.map((review: any) => ({
+          id: review.id,
+          listingId: review.listing_id || review.listingId,
+          reviewerId: review.reviewer_id || review.reviewerId,
+          reviewerName: review.reviewer_name || review.reviewerName || 'Anonymous',
+          rating: review.rating,
+          comment: review.comment || '',
+          title: review.title || undefined,
+          approved: review.approved || false,
+          bookingId: review.booking_id || review.bookingId,
+          createdAt: review.created_at || review.createdAt || '',
+          updatedAt: review.updated_at || review.updatedAt || '',
+        }));
+      } else {
+        const allReviews = await LocalStorageService.getAll('reviews');
+        return allReviews.filter((review: Review) => review.reviewerId === userId);
+      }
     } catch (error) {
       console.error('Error getting user reviews:', error);
       throw new Error('Failed to get user reviews');
@@ -118,10 +208,69 @@ export class ReviewService {
    */
   static async getAllReviews(): Promise<Review[]> {
     try {
-      return await LocalStorageService.getAll('reviews');
+      if (useSupabase) {
+        const reviews = await APIService.get('reviews', {
+          orderBy: { column: 'created_at', ascending: false }
+        });
+        
+        return reviews.map((review: any) => ({
+          id: review.id,
+          listingId: review.listing_id || review.listingId,
+          reviewerId: review.reviewer_id || review.reviewerId,
+          reviewerName: review.reviewer_name || review.reviewerName || 'Anonymous',
+          rating: review.rating,
+          comment: review.comment || '',
+          title: review.title || undefined,
+          approved: review.approved || false,
+          bookingId: review.booking_id || review.bookingId,
+          createdAt: review.created_at || review.createdAt || '',
+          updatedAt: review.updated_at || review.updatedAt || '',
+        }));
+      } else {
+        return await LocalStorageService.getAll('reviews');
+      }
     } catch (error) {
       console.error('Error getting all reviews:', error);
       throw new Error('Failed to get all reviews');
+    }
+  }
+
+  /**
+   * Get approved reviews for a listing (public view)
+   */
+  static async getApprovedReviews(listingId: string): Promise<Review[]> {
+    try {
+      if (useSupabase) {
+        const reviews = await APIService.get('reviews', {
+          filter: { column: 'listing_id', operator: 'eq', value: listingId },
+          orderBy: { column: 'created_at', ascending: false }
+        });
+        
+        // Filter to only approved reviews
+        const approved = reviews.filter((review: any) => review.approved === true);
+        
+        return approved.map((review: any) => ({
+          id: review.id,
+          listingId: review.listing_id || review.listingId,
+          reviewerId: review.reviewer_id || review.reviewerId,
+          reviewerName: review.reviewer_name || review.reviewerName || 'Anonymous',
+          rating: review.rating,
+          comment: review.comment || '',
+          title: review.title || undefined,
+          approved: true,
+          bookingId: review.booking_id || review.bookingId,
+          createdAt: review.created_at || review.createdAt || '',
+          updatedAt: review.updated_at || review.updatedAt || '',
+        }));
+      } else {
+        const allReviews = await LocalStorageService.getAll('reviews');
+        return allReviews.filter((review: Review) => 
+          review.listingId === listingId
+        );
+      }
+    } catch (error) {
+      console.error('Error getting approved reviews:', error);
+      throw new Error('Failed to get approved reviews');
     }
   }
 
@@ -130,7 +279,11 @@ export class ReviewService {
    */
   static async deleteReview(reviewId: string): Promise<void> {
     try {
-      await LocalStorageService.delete('reviews', reviewId);
+      if (useSupabase) {
+        await APIService.delete('reviews', reviewId);
+      } else {
+        await LocalStorageService.delete('reviews', reviewId);
+      }
     } catch (error) {
       console.error('Error deleting review:', error);
       throw new Error('Failed to delete review');

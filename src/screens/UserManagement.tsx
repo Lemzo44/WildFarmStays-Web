@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
 import { LocalStorageService } from '../services/LocalStorageService';
+import { APIService } from '../services/APIService';
 import { BookingService } from '../services/BookingService';
 import { ReviewService } from '../services/ReviewService';
+import { useSupabase } from '../lib/supabase';
 
 interface UserManagementProps {
   onNavigate?: (screen: string, data?: any) => void;
@@ -24,7 +26,25 @@ export default function UserManagement({ onNavigate }: UserManagementProps) {
 
   const loadUsers = async () => {
     try {
-      const allUsers = await LocalStorageService.getAll('users');
+      let allUsers: any[] = [];
+      
+      if (useSupabase) {
+        allUsers = await APIService.get('profiles', {
+          orderBy: { column: 'created_at', ascending: false }
+        });
+        
+        // Normalize user fields
+        allUsers = allUsers.map((u: any) => ({
+          ...u,
+          firstName: u.first_name || u.firstName,
+          lastName: u.last_name || u.lastName,
+          joinDate: u.join_date || u.joinDate || u.created_at || u.createdAt,
+          createdAt: u.created_at || u.createdAt,
+        }));
+      } else {
+        allUsers = await LocalStorageService.getAll('users');
+      }
+      
       // Filter out admin users from list
       const regularUsers = allUsers.filter((u: any) => u.role !== 'admin');
       setUsers(regularUsers);
@@ -35,19 +55,41 @@ export default function UserManagement({ onNavigate }: UserManagementProps) {
 
   const applyFilters = async () => {
     try {
-      let allUsers = await LocalStorageService.getAll('users');
+      let allUsers: any[] = [];
+      
+      if (useSupabase) {
+        allUsers = await APIService.get('profiles', {
+          orderBy: { column: 'created_at', ascending: false }
+        });
+        
+        // Normalize user fields
+        allUsers = allUsers.map((u: any) => ({
+          ...u,
+          firstName: u.first_name || u.firstName,
+          lastName: u.last_name || u.lastName,
+          joinDate: u.join_date || u.joinDate || u.created_at || u.createdAt,
+          createdAt: u.created_at || u.createdAt,
+        }));
+      } else {
+        allUsers = await LocalStorageService.getAll('users');
+      }
+      
       // Filter out admin users
       allUsers = allUsers.filter((u: any) => u.role !== 'admin');
 
       // Filter by search query
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
-        allUsers = allUsers.filter((u: any) =>
-          (u.firstName && u.firstName.toLowerCase().includes(query)) ||
-          (u.lastName && u.lastName.toLowerCase().includes(query)) ||
-          u.email.toLowerCase().includes(query) ||
-          u.id === query
-        );
+        allUsers = allUsers.filter((u: any) => {
+          const firstName = u.firstName || u.first_name || '';
+          const lastName = u.lastName || u.last_name || '';
+          return (
+            firstName.toLowerCase().includes(query) ||
+            lastName.toLowerCase().includes(query) ||
+            (u.email && u.email.toLowerCase().includes(query)) ||
+            u.id === query
+          );
+        });
       }
 
       // Filter by role
@@ -59,22 +101,26 @@ export default function UserManagement({ onNavigate }: UserManagementProps) {
       switch (sortBy) {
         case 'name':
           allUsers.sort((a: any, b: any) => {
-            const nameA = `${a.firstName || ''} ${a.lastName || ''}`.trim();
-            const nameB = `${b.firstName || ''} ${b.lastName || ''}`.trim();
+            const firstNameA = a.firstName || a.first_name || '';
+            const lastNameA = a.lastName || a.last_name || '';
+            const firstNameB = b.firstName || b.firstName || '';
+            const lastNameB = b.lastName || b.lastName || '';
+            const nameA = `${firstNameA} ${lastNameA}`.trim();
+            const nameB = `${firstNameB} ${lastNameB}`.trim();
             return nameA.localeCompare(nameB);
           });
           break;
         case 'recent':
           allUsers.sort((a: any, b: any) => {
-            const dateA = new Date(a.joinDate || a.createdAt || 0);
-            const dateB = new Date(b.joinDate || b.createdAt || 0);
+            const dateA = new Date(a.joinDate || a.createdAt || a.created_at || 0);
+            const dateB = new Date(b.joinDate || b.createdAt || b.created_at || 0);
             return dateB.getTime() - dateA.getTime();
           });
           break;
         case 'oldest':
           allUsers.sort((a: any, b: any) => {
-            const dateA = new Date(a.joinDate || a.createdAt || 0);
-            const dateB = new Date(b.joinDate || b.createdAt || 0);
+            const dateA = new Date(a.joinDate || a.createdAt || a.created_at || 0);
+            const dateB = new Date(b.joinDate || b.createdAt || b.created_at || 0);
             return dateA.getTime() - dateB.getTime();
           });
           break;
@@ -222,7 +268,7 @@ export default function UserManagement({ onNavigate }: UserManagementProps) {
           >
             <View style={styles.userInfo}>
               <Text style={styles.userName}>
-                {user.firstName || ''} {user.lastName || ''}
+                {user.firstName || user.first_name || ''} {user.lastName || user.last_name || ''}
               </Text>
               <Text style={styles.userEmail}>{user.email}</Text>
               <View style={styles.userMeta}>

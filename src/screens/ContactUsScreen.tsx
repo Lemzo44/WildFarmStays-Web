@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
 import { LocalStorageService } from '../services/LocalStorageService';
+import { APIService } from '../services/APIService';
 import { useAuth } from '../contexts/AuthContext';
+import { useSupabase } from '../lib/supabase';
 
 interface ContactUsScreenProps {
   onNavigate?: (screen: string) => void;
@@ -54,21 +56,35 @@ export default function ContactUsScreen({ onNavigate }: ContactUsScreenProps) {
     }
 
     try {
-      // Create support ticket
-      const ticket = {
-        id: Date.now().toString(),
-        subject: formData.subject || 'Contact Us Inquiry',
-        message: formData.message,
-        category: 'General',
-        priority: 'normal',
-        status: 'open',
-        userName: formData.name,
-        userEmail: formData.email,
-        userId: currentUser?.id || 'guest',
-        createdAt: new Date().toISOString(),
-      };
+      if (useSupabase) {
+        // Create support ticket in Supabase
+        const ticketData = {
+          user_id: currentUser?.id || null,
+          name: formData.name,
+          email: formData.email,
+          subject: formData.subject || 'Contact Us Inquiry',
+          message: formData.message,
+          status: 'open',
+        };
 
-      await LocalStorageService.save('tickets', ticket);
+        await APIService.create('support_tickets', ticketData);
+      } else {
+        // Create support ticket in localStorage
+        const ticket = {
+          id: Date.now().toString(),
+          subject: formData.subject || 'Contact Us Inquiry',
+          message: formData.message,
+          category: 'General',
+          priority: 'normal',
+          status: 'open',
+          userName: formData.name,
+          userEmail: formData.email,
+          userId: currentUser?.id || 'guest',
+          createdAt: new Date().toISOString(),
+        };
+
+        await LocalStorageService.save('tickets', ticket);
+      }
       
       Alert.alert(
         'Message Sent!',

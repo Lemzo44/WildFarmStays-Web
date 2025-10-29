@@ -1,4 +1,6 @@
 import { LocalStorageService } from './LocalStorageService';
+import { APIService } from './APIService';
+import { useSupabase } from '../lib/supabase';
 
 export interface BookingDetails {
   id: string;
@@ -26,30 +28,51 @@ export const BookingManagementService = {
    */
   cancelBooking: async (bookingId: string): Promise<{success: boolean, message: string}> => {
     try {
-      const booking = await LocalStorageService.getById('bookings', bookingId);
-      
-      if (!booking) {
-        return { success: false, message: 'Booking not found.' };
+      if (useSupabase) {
+        const booking = await APIService.getById('bookings', bookingId);
+        if (!booking) {
+          return { success: false, message: 'Booking not found.' };
+        }
+
+        // Check if booking can be cancelled
+        if (booking.status === 'completed') {
+          return { success: false, message: 'Cannot cancel a completed booking.' };
+        }
+
+        if (booking.status === 'cancelled') {
+          return { success: false, message: 'Booking is already cancelled.' };
+        }
+
+        // Update booking status to cancelled
+        await APIService.update('bookings', bookingId, {
+          status: 'cancelled'
+        });
+
+        return { success: true, message: 'Booking cancelled successfully.' };
+      } else {
+        const booking = await LocalStorageService.getById('bookings', bookingId);
+        
+        if (!booking) {
+          return { success: false, message: 'Booking not found.' };
+        }
+
+        if (booking.status === 'completed') {
+          return { success: false, message: 'Cannot cancel a completed booking.' };
+        }
+
+        if (booking.status === 'cancelled') {
+          return { success: false, message: 'Booking is already cancelled.' };
+        }
+
+        const updatedBooking = { 
+          ...booking,
+          status: 'cancelled',
+          cancelledAt: new Date().toISOString()
+        };
+        await LocalStorageService.save('bookings', updatedBooking);
+
+        return { success: true, message: 'Booking cancelled successfully.' };
       }
-
-      // Check if booking can be cancelled (e.g., not already completed or cancelled)
-      if (booking.status === 'completed') {
-        return { success: false, message: 'Cannot cancel a completed booking.' };
-      }
-
-      if (booking.status === 'cancelled') {
-        return { success: false, message: 'Booking is already cancelled.' };
-      }
-
-      // Update booking status to cancelled
-      const updatedBooking = { 
-        ...booking,
-        status: 'cancelled',
-        cancelledAt: new Date().toISOString()
-      };
-      await LocalStorageService.save('bookings', updatedBooking);
-
-      return { success: true, message: 'Booking cancelled successfully.' };
     } catch (error) {
       console.error('Error cancelling booking:', error);
       return { success: false, message: 'Failed to cancel booking. Please try again.' };
@@ -93,34 +116,68 @@ export const BookingManagementService = {
       }
 
       // Calculate new total price if dates or guests changed
-      let totalPrice = booking.totalPrice;
+      let totalPrice = booking.totalPrice || booking.total_price;
       if (updates.startDate || updates.endDate || updates.guests) {
-        const listing = await LocalStorageService.getById('listings', booking.listingId);
+        const listingId = booking.listingId || booking.listing_id;
+        const listing = useSupabase
+          ? await APIService.getById('listings', listingId)
+          : await LocalStorageService.getById('listings', listingId);
+        
         if (listing) {
-          const startDate = updates.startDate ? new Date(updates.startDate) : new Date(booking.startDate);
-          const endDate = updates.endDate ? new Date(updates.endDate) : new Date(booking.endDate);
+          const startDate = updates.startDate ? new Date(updates.startDate) : new Date(booking.startDate || booking.start_date);
+          const endDate = updates.endDate ? new Date(updates.endDate) : new Date(booking.endDate || booking.end_date);
           const guests = updates.guests || booking.guests;
           
           const nights = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-          const basePrice = listing.price * nights * guests;
+          const basePrice = (listing.price || listing.price_per_night || 0) * nights * guests;
           totalPrice = basePrice * 1.1; // Add 10% service fee
         }
       }
 
       // Update booking
-      const updatedBooking = {
-        ...booking,
-        ...updates,
-        totalPrice,
-        updatedAt: new Date().toISOString()
-      };
-      await LocalStorageService.save('bookings', updatedBooking);
+      if (useSupabase) {
+        const updatePayload: any = {};
+        if (updates.startDate) updatePayload.start_date = updates.startDate;
+        if (updates.endDate) updatePayload.end_date = updates.endDate;
+        if (updates.guests !== undefined) updatePayload.guests = updates.guests;
+        if (updates.specialRequests) updatePayload.special_requests = updates.specialRequests;
+        if (totalPrice !== booking.totalPrice) updatePayload.total_price = totalPrice;
+        if (updates.status) updatePayload.status = updates.status;
 
-      return { 
-        success: true, 
-        message: 'Booking updated successfully.',
-        booking: updatedBooking
-      };
+        await APIService.update('bookings', bookingId, updatePayload);
+        
+        // Fetch updated booking
+        const updatedBooking = await APIService.getById('bookings', bookingId);
+        
+        return { 
+          success: true, 
+          message: 'Booking updated successfully.',
+          booking: {
+            ...updatedBooking,
+            camperId: updatedBooking.camper_id || updatedBooking.camperId,
+            farmerId: updatedBooking.farmer_id || updatedBooking.farmerId,
+            listingId: updatedBooking.listing_id || updatedBooking.listingId,
+            startDate: updatedBooking.start_date || updatedBooking.startDate,
+            endDate: updatedBooking.end_date || updatedBooking.endDate,
+            specialRequests: updatedBooking.special_requests || updatedBooking.specialRequests,
+            totalPrice: updatedBooking.total_price || updatedBooking.totalPrice,
+          } as BookingDetails
+        };
+      } else {
+        const updatedBooking = {
+          ...booking,
+          ...updates,
+          totalPrice,
+          updatedAt: new Date().toISOString()
+        };
+        await LocalStorageService.save('bookings', updatedBooking);
+
+        return { 
+          success: true, 
+          message: 'Booking updated successfully.',
+          booking: updatedBooking
+        };
+      }
     } catch (error) {
       console.error('Error updating booking:', error);
       return { success: false, message: 'Failed to update booking. Please try again.' };
@@ -132,23 +189,81 @@ export const BookingManagementService = {
    */
   getBookingDetails: async (bookingId: string): Promise<BookingDetails | null> => {
     try {
-      const booking = await LocalStorageService.getById('bookings', bookingId);
+      const booking = useSupabase
+        ? await APIService.getById('bookings', bookingId)
+        : await LocalStorageService.getById('bookings', bookingId);
+      
       if (!booking) return null;
 
-      const listing = await LocalStorageService.getById('listings', booking.listingId);
-      const farmer = await LocalStorageService.getById('users', booking.farmerId);
-      const camper = await LocalStorageService.getById('users', booking.camperId);
+      // Normalize booking fields
+      const normalizedBooking = {
+        ...booking,
+        camperId: booking.camper_id || booking.camperId,
+        farmerId: booking.farmer_id || booking.farmerId,
+        listingId: booking.listing_id || booking.listingId,
+        startDate: booking.start_date || booking.startDate,
+        endDate: booking.end_date || booking.endDate,
+        totalPrice: booking.total_price || booking.totalPrice,
+        specialRequests: booking.special_requests || booking.specialRequests,
+      };
+
+      const listingId = normalizedBooking.listingId;
+      const farmerId = normalizedBooking.farmerId;
+      const camperId = normalizedBooking.camperId;
+
+      // Fetch related data
+      let listing: any = null;
+      let farmer: any = null;
+      let camper: any = null;
+
+      if (useSupabase) {
+        listing = listingId ? await APIService.getById('listings', listingId).catch(() => null) : null;
+        farmer = farmerId ? await APIService.getById('profiles', farmerId).catch(() => null) : null;
+        camper = camperId ? await APIService.getById('profiles', camperId).catch(() => null) : null;
+      } else {
+        listing = listingId ? await LocalStorageService.getById('listings', listingId) : null;
+        farmer = farmerId ? await LocalStorageService.getById('users', farmerId) : null;
+        camper = camperId ? await LocalStorageService.getById('users', camperId) : null;
+      }
+
+      const farmerFirstName = farmer?.first_name || farmer?.firstName || '';
+      const farmerLastName = farmer?.last_name || farmer?.lastName || '';
+      const camperFirstName = camper?.first_name || camper?.firstName || '';
+      const camperLastName = camper?.last_name || camper?.lastName || '';
       
       return {
-        ...booking,
+        ...normalizedBooking,
         listingTitle: listing?.title || 'Unknown Listing',
         listingLocation: listing?.location || 'Unknown Location',
-        farmerName: farmer ? `${farmer.firstName} ${farmer.lastName}` : 'Unknown Farmer',
-        camperName: camper ? `${camper.firstName} ${camper.lastName}` : 'Unknown Camper',
-      };
+        farmerName: farmer ? `${farmerFirstName} ${farmerLastName}`.trim() || 'Unknown Farmer' : 'Unknown Farmer',
+        camperName: camper ? `${camperFirstName} ${camperLastName}`.trim() || 'Unknown Camper' : 'Unknown Camper',
+      } as BookingDetails;
     } catch (error) {
       console.error('Error getting booking details:', error);
       return null;
+    }
+  },
+
+  /**
+   * Confirm a booking
+   */
+  confirmBooking: async (bookingId: string): Promise<{success: boolean, message: string}> => {
+    try {
+      if (useSupabase) {
+        await APIService.update('bookings', bookingId, { status: 'confirmed' });
+        return { success: true, message: 'Booking confirmed successfully.' };
+      } else {
+        const booking = await LocalStorageService.getById('bookings', bookingId);
+        if (!booking) {
+          return { success: false, message: 'Booking not found.' };
+        }
+        booking.status = 'confirmed';
+        await LocalStorageService.save('bookings', booking);
+        return { success: true, message: 'Booking confirmed successfully.' };
+      }
+    } catch (error) {
+      console.error('Error confirming booking:', error);
+      return { success: false, message: 'Failed to confirm booking. Please try again.' };
     }
   },
 

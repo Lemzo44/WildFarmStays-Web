@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
 import { LocalStorageService } from '../services/LocalStorageService';
+import { APIService } from '../services/APIService';
+import { useSupabase } from '../lib/supabase';
 
 interface SupportTicketsProps {
   onNavigate?: (screen: string, data?: any) => void;
@@ -22,9 +24,23 @@ export default function SupportTickets({ onNavigate }: SupportTicketsProps) {
 
   const loadTickets = async () => {
     try {
-      // For now, load from tickets key, but this needs to be implemented
-      const allTickets = await LocalStorageService.getAll('tickets');
-      setTickets(allTickets || []);
+      let allTickets: any[] = [];
+      if (useSupabase) {
+        allTickets = await APIService.get('support_tickets', {
+          orderBy: { column: 'created_at', ascending: false }
+        });
+        // Normalize ticket fields
+        allTickets = allTickets.map((t: any) => ({
+          ...t,
+          userName: t.name || t.userName,
+          userEmail: t.email || t.userEmail,
+          userId: t.user_id || t.userId,
+          createdAt: t.created_at || t.createdAt,
+        }));
+      } else {
+        allTickets = await LocalStorageService.getAll('tickets') || [];
+      }
+      setTickets(allTickets);
     } catch (error) {
       console.error('Error loading tickets:', error);
     }
@@ -32,7 +48,22 @@ export default function SupportTickets({ onNavigate }: SupportTicketsProps) {
 
   const applyFilters = async () => {
     try {
-      let allTickets = await LocalStorageService.getAll('tickets') || [];
+      let allTickets: any[] = [];
+      if (useSupabase) {
+        allTickets = await APIService.get('support_tickets', {
+          orderBy: { column: 'created_at', ascending: false }
+        });
+        // Normalize ticket fields
+        allTickets = allTickets.map((t: any) => ({
+          ...t,
+          userName: t.name || t.userName,
+          userEmail: t.email || t.userEmail,
+          userId: t.user_id || t.userId,
+          createdAt: t.created_at || t.createdAt,
+        }));
+      } else {
+        allTickets = await LocalStorageService.getAll('tickets') || [];
+      }
 
       // Filter by search query
       if (searchQuery) {
@@ -61,11 +92,16 @@ export default function SupportTickets({ onNavigate }: SupportTicketsProps) {
 
   const handleUpdateStatus = async (ticketId: string, newStatus: string) => {
     try {
-      const ticket = await LocalStorageService.getById('tickets', ticketId);
-      if (ticket) {
-        ticket.status = newStatus;
-        await LocalStorageService.save('tickets', ticket);
+      if (useSupabase) {
+        await APIService.update('support_tickets', ticketId, { status: newStatus });
         loadTickets();
+      } else {
+        const ticket = await LocalStorageService.getById('tickets', ticketId);
+        if (ticket) {
+          ticket.status = newStatus;
+          await LocalStorageService.save('tickets', ticket);
+          loadTickets();
+        }
       }
     } catch (error) {
       Alert.alert('Error', 'Failed to update ticket status');
@@ -186,7 +222,7 @@ export default function SupportTickets({ onNavigate }: SupportTicketsProps) {
                 </View>
                 <Text style={styles.ticketCategory}>{ticket.category || 'General'}</Text>
                 <Text style={styles.ticketDate}>
-                  Created: {ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString() : 'N/A'}
+                  Created: {(ticket.createdAt || ticket.created_at) ? new Date(ticket.createdAt || ticket.created_at).toLocaleDateString() : 'N/A'}
                 </Text>
               </TouchableOpacity>
             ))}

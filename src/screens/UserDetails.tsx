@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
 import { LocalStorageService } from '../services/LocalStorageService';
+import { APIService } from '../services/APIService';
 import { BookingService } from '../services/BookingService';
 import { ReviewService } from '../services/ReviewService';
+import { useSupabase } from '../lib/supabase';
 
 interface UserDetailsProps {
   user?: any;
@@ -44,10 +46,23 @@ export default function UserDetails({ user, onNavigate }: UserDetailsProps) {
 
       // Load user listings (if farmer)
       if (userData.role === 'farmer') {
-        const listings = await LocalStorageService.getAll('listings');
-        const farmerListings = listings.filter((l: any) => l.farmerId === userData.id);
-        setUserListings(farmerListings);
-        setStats(prev => ({ ...prev, totalListings: farmerListings.length }));
+        let listings: any[] = [];
+        if (useSupabase) {
+          listings = await APIService.get('listings', {
+            filter: { column: 'farmer_id', operator: 'eq', value: userData.id }
+          });
+          // Normalize listings
+          listings = listings.map((l: any) => ({
+            ...l,
+            farmerId: l.farmer_id || l.farmerId,
+            price: l.price || l.price_per_night,
+          }));
+        } else {
+          const allListings = await LocalStorageService.getAll('listings');
+          listings = allListings.filter((l: any) => l.farmerId === userData.id);
+        }
+        setUserListings(listings);
+        setStats(prev => ({ ...prev, totalListings: listings.length }));
 
         // Load farmer's bookings
         const bookings = await BookingService.getUserBookings(userData.id, 'farmer');
@@ -63,10 +78,17 @@ export default function UserDetails({ user, onNavigate }: UserDetailsProps) {
       setUserReviews(reviews);
       setStats(prev => ({ ...prev, totalReviews: reviews.length }));
 
-      // Load admin notes (if any)
-      const notes = await LocalStorageService.getItem('admin_notes', userData.id);
-      if (notes) {
-        setAdminNotes(notes);
+      // Load admin notes (if any) - store in profile or separate table
+      // For now, using localStorage fallback as admin_notes isn't in schema
+      try {
+        const notes = useSupabase
+          ? null // TODO: Add admin_notes field to profiles table if needed
+          : await LocalStorageService.getItem('admin_notes', userData.id);
+        if (notes) {
+          setAdminNotes(notes);
+        }
+      } catch (error) {
+        // Ignore if notes don't exist
       }
     } catch (error) {
       console.error('Error loading user data:', error);
@@ -75,7 +97,13 @@ export default function UserDetails({ user, onNavigate }: UserDetailsProps) {
 
   const saveAdminNotes = async () => {
     try {
-      await LocalStorageService.setItem('admin_notes', userData.id, adminNotes);
+      if (useSupabase) {
+        // TODO: Update profile with admin_notes if schema is extended
+        // For now, using localStorage fallback
+        await LocalStorageService.setItem('admin_notes', userData.id, adminNotes);
+      } else {
+        await LocalStorageService.setItem('admin_notes', userData.id, adminNotes);
+      }
       Alert.alert('Success', 'Admin notes saved');
     } catch (error) {
       Alert.alert('Error', 'Failed to save notes');
@@ -133,7 +161,7 @@ export default function UserDetails({ user, onNavigate }: UserDetailsProps) {
         
         <View style={styles.infoCard}>
           <Text style={styles.label}>Name</Text>
-          <Text style={styles.value}>{userData.firstName || ''} {userData.lastName || ''}</Text>
+          <Text style={styles.value}>{userData.firstName || userData.first_name || ''} {userData.lastName || userData.last_name || ''}</Text>
         </View>
 
         <View style={styles.infoCard}>
@@ -155,11 +183,11 @@ export default function UserDetails({ user, onNavigate }: UserDetailsProps) {
           <>
             <View style={styles.infoCard}>
               <Text style={styles.label}>Farm Name</Text>
-              <Text style={styles.value}>{userData.farmName || 'N/A'}</Text>
+              <Text style={styles.value}>{userData.farmName || userData.farm_name || 'N/A'}</Text>
             </View>
             <View style={styles.infoCard}>
               <Text style={styles.label}>Farm Address</Text>
-              <Text style={styles.value}>{userData.farmAddress || 'N/A'}</Text>
+              <Text style={styles.value}>{userData.farmAddress || userData.farm_address || 'N/A'}</Text>
             </View>
             <View style={styles.infoCard}>
               <Text style={styles.label}>Postcode</Text>
@@ -176,7 +204,9 @@ export default function UserDetails({ user, onNavigate }: UserDetailsProps) {
         <View style={styles.infoCard}>
           <Text style={styles.label}>Join Date</Text>
           <Text style={styles.value}>
-            {userData.joinDate ? new Date(userData.joinDate).toLocaleDateString() : 'N/A'}
+            {(userData.joinDate || userData.join_date || userData.created_at || userData.createdAt)
+              ? new Date(userData.joinDate || userData.join_date || userData.created_at || userData.createdAt).toLocaleDateString()
+              : 'N/A'}
           </Text>
         </View>
       </View>
@@ -238,7 +268,7 @@ export default function UserDetails({ user, onNavigate }: UserDetailsProps) {
             >
               <Text style={styles.bookingTitle}>{booking.listingTitle}</Text>
               <Text style={styles.bookingDate}>
-                {booking.startDate} - {booking.endDate}
+                {booking.startDate || booking.start_date} - {booking.endDate || booking.end_date}
               </Text>
               <Text style={styles.bookingStatus}>Status: {booking.status}</Text>
             </TouchableOpacity>
@@ -258,7 +288,7 @@ export default function UserDetails({ user, onNavigate }: UserDetailsProps) {
             >
               <Text style={styles.listingTitle}>{listing.title}</Text>
               <Text style={styles.listingLocation}>{listing.location}</Text>
-              <Text style={styles.listingPrice}>£{listing.price}/night</Text>
+              <Text style={styles.listingPrice}>£{listing.price || listing.price_per_night}/night</Text>
             </TouchableOpacity>
           ))}
         </View>
