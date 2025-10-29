@@ -51,11 +51,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .from('profiles')
         .select('*')
         .eq('id', supabaseUser.id)
-        .single();
+        .maybeSingle(); // Use maybeSingle instead of single - handles 0 or 1 results gracefully
 
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
         console.error('Error loading profile:', error);
-        return;
+        console.error('Profile error details:', JSON.stringify(error, null, 2));
+        // Don't return early - still try to map user from auth data
+      }
+
+      if (!profile) {
+        console.warn('Profile not found for user:', supabaseUser.id);
+        console.warn('This might happen if the user needs to confirm their email first');
       }
 
       // Map Supabase user + profile to app User type
@@ -212,14 +218,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const register = async (email: string, password: string, role: 'camper' | 'farmer' | 'admin', userData?: Partial<User>): Promise<boolean> => {
-    console.log('=== REGISTRATION DEBUG ===');
-    console.log('useSupabase flag:', useSupabase);
-    console.log('supabase client exists:', !!supabase);
-    console.log('Supabase URL:', import.meta.env.VITE_SUPABASE_URL ? 'SET' : 'MISSING');
-    console.log('Supabase Key:', import.meta.env.VITE_SUPABASE_ANON_KEY ? 'SET' : 'MISSING');
-    
     if (useSupabase && supabase) {
-      console.log('✅ Using Supabase for registration');
       try {
         // 1. Sign up with Supabase Auth
         const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -255,8 +254,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           subscription_status: 'active',
         };
 
-        console.log('Creating profile with data:', { ...profileData, id: '[UUID]' });
-
         const { data: profileInsertResult, error: profileError } = await supabase
           .from('profiles')
           .insert(profileData)
@@ -271,9 +268,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return false;
         }
 
-        console.log('Profile created successfully:', profileInsertResult);
+        // Check if email confirmation is required
+        if (!authData.session) {
+          console.warn('⚠️ No session returned - email confirmation may be required');
+          console.warn('User ID:', authData.user.id);
+          console.warn('User email:', authData.user.email);
+          alert('Registration successful! Please check your email to confirm your account before logging in.');
+          return true; // Still return true because profile was created
+        }
 
-        // 3. Load the new user
+        // 3. Load the new user (only if we have a session)
         await loadUserFromSupabase(authData.user);
         return true;
       } catch (error) {
