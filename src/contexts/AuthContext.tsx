@@ -218,10 +218,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const { data: authData, error: authError } = await supabase.auth.signUp({
           email,
           password,
+          options: {
+            emailRedirectTo: `${window.location.origin}`,
+          },
         });
 
-        if (authError || !authData.user) {
+        if (authError) {
           console.error('Registration auth error:', authError);
+          console.error('Auth error details:', JSON.stringify(authError, null, 2));
+          return false;
+        }
+
+        if (!authData.user) {
+          console.error('No user returned from signup');
           return false;
         }
 
@@ -239,15 +248,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           subscription_status: 'active',
         };
 
-        const { error: profileError } = await supabase
+        console.log('Creating profile with data:', { ...profileData, id: '[UUID]' });
+
+        const { data: profileInsertResult, error: profileError } = await supabase
           .from('profiles')
-          .insert(profileData);
+          .insert(profileData)
+          .select();
 
         if (profileError) {
           console.error('Error creating profile:', profileError);
-          // Note: Can't easily rollback auth user without admin API, but profile creation should work with RLS
+          console.error('Profile error details:', JSON.stringify(profileError, null, 2));
+          console.error('Profile data attempted:', profileData);
+          // Show user-friendly error
+          alert(`Profile creation failed: ${profileError.message || 'Unknown error'}`);
           return false;
         }
+
+        console.log('Profile created successfully:', profileInsertResult);
 
         // 3. Load the new user
         await loadUserFromSupabase(authData.user);
