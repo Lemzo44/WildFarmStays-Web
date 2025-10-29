@@ -101,7 +101,14 @@ function AppContent() {
       case 'contact':
         return <ContactUsScreen onNavigate={handleNavigate} />;
       case 'waiver':
-        return <WaiverViewScreen onNavigate={handleNavigate} listing={(screenData as any)?.listing} waiverType={(screenData as any)?.waiverType} />;
+        return (
+          <WaiverViewScreen
+            onNavigate={handleNavigate}
+            listing={(screenData as any)?.listing}
+            waiverType={(screenData as any)?.waiverType}
+            form={(screenData as any)?.form}
+          />
+        );
       
       // Authenticated screens
       case 'home':
@@ -115,7 +122,13 @@ function AppContent() {
       case 'profile':
         return <ProfileScreen />;
       case 'booking':
-        return <BookingScreen listing={screenData} onNavigate={handleNavigate} />;
+        return (
+          <BookingScreen
+            listing={(screenData as any)?.listing || screenData}
+            form={(screenData as any)?.form}
+            onNavigate={handleNavigate}
+          />
+        );
       case 'review':
         return <ReviewScreen />;
       case 'reviews':

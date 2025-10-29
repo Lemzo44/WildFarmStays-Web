@@ -6,9 +6,15 @@ interface WaiverViewScreenProps {
   onNavigate?: (screen: string, data?: any) => void;
   listing?: any;
   waiverType?: WaiverType;
+  form?: {
+    checkInDate?: string;
+    checkOutDate?: string;
+    guests?: number;
+    specialRequests?: string;
+  };
 }
 
-export default function WaiverViewScreen({ onNavigate, listing, waiverType }: WaiverViewScreenProps) {
+export default function WaiverViewScreen({ onNavigate, listing, waiverType, form }: WaiverViewScreenProps) {
   const resolvedWaiverType = useMemo(() => {
     if (waiverType) return waiverType;
     return detectWaiverType({ county: listing?.county, location: listing?.location });
@@ -19,7 +25,15 @@ export default function WaiverViewScreen({ onNavigate, listing, waiverType }: Wa
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => onNavigate?.('booking', listing)} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() =>
+            onNavigate?.('booking', {
+              listing,
+              form,
+            })
+          }
+          style={styles.backButton}
+        >
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
         <Text style={styles.title}>Camper Waiver</Text>

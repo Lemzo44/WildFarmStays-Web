@@ -1,10 +1,10 @@
 1. Permission to Camp
-The landowner (“the Farmer”) grants permission for the camper(s) named above (“the Camper”) to pitch a tent and camp in the specified area for the agreed dates only.
-This is wild camping — no facilities or services are provided. The land is not a campsite. The Camper must be fully self-sufficient and remove all equipment, litter, and waste upon departure.
+The landowner ('the Farmer') grants permission for the camper(s) named above ('the Camper') to pitch a tent and camp in the specified area for the agreed dates only.
+This is wild camping - no facilities or services are provided. The land is not a campsite. The Camper must be fully self-sufficient and remove all equipment, litter, and waste upon departure.
 This permission is personal to the Camper and may not be transferred, sublet, or used for organised events, gatherings, or commercial activities.
 
 2. Legal Status and Applicable Law
-By signing this agreement, the Camper confirms that they understand they are entering the land with the landowner’s permission, and that the landowner’s duty of care is governed by the Occupiers’ Liability Acts 1957 and 1984 (as applicable in the UK jurisdiction).
+By signing this agreement, the Camper confirms that they understand they are entering the land with the landowner's permission, and that the landowner's duty of care is governed by the Occupiers' Liability Acts 1957 and 1984 (as applicable in the UK jurisdiction).
 This agreement is governed by and interpreted in accordance with the laws of [England and Wales / Scotland / Northern Ireland], and any dispute shall be subject to the jurisdiction of the relevant courts.
 
 3. Acknowledgement of Risk
@@ -13,7 +13,7 @@ The Camper understands and accepts that:
 * The land is not inspected or adapted for public camping and no amenities (toilets, water, lighting, waste disposal) are provided.
 * The area is remote and unsupervised; mobile coverage may be limited.
 * The Camper is responsible for their own safety, health, and belongings.
-* Camping is undertaken entirely at the Camper’s own risk.
+* Camping is undertaken entirely at the Camper's own risk.
 
 4. Conduct and Safety Rules
 The Camper agrees to:
@@ -28,7 +28,7 @@ The Camper agrees to:
 5. Liability and Indemnity
 The Camper confirms that:
 * They understand the nature of wild camping and accept all associated risks.
-* They agree to indemnify and hold harmless the Farmer against any claim, loss, or damage arising from their stay, except where injury or loss results from the Farmer’s negligence or wilful misconduct, as defined by applicable law.
+* They agree to indemnify and hold harmless the Farmer against any claim, loss, or damage arising from their stay, except where injury or loss results from the Farmer's negligence or wilful misconduct, as defined by applicable law.
 * This agreement does not constitute a tenancy or grant of legal interest in the land.
 
 6. Data Protection

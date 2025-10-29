@@ -15,6 +15,8 @@ export interface Booking {
   waiverAccepted: boolean;
   waiverType?: 'republic-ireland' | 'northern-ireland';
   waiverAcceptedAt?: string;
+  // Permanent copy of the waiver content agreed to at booking time
+  waiverTextSnapshot?: string;
   createdAt: string;
   updatedAt: string;
 }

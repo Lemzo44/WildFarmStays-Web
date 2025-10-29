@@ -6,15 +6,23 @@ import { LocalStorageService } from '../services/LocalStorageService';
 import { BookingService } from '../services/BookingService';
 import { FavoritesService } from '../services/FavoritesService';
 import { ReviewService } from '../services/ReviewService';
-import { detectWaiverType, WaiverType } from '../utils/Waiver';
+import { detectWaiverType, WaiverType, getWaiverText } from '../utils/Waiver';
 import { MessageService } from '../services/MessageService';
+
+interface BookingFormState {
+  checkInDate?: string; // ISO date yyyy-mm-dd
+  checkOutDate?: string; // ISO date yyyy-mm-dd
+  guests?: number;
+  specialRequests?: string;
+}
 
 interface BookingScreenProps {
   listing?: any;
-  onNavigate?: (screen: string) => void;
+  form?: BookingFormState;
+  onNavigate?: (screen: string, data?: any) => void;
 }
 
-export default function BookingScreen({ listing, onNavigate }: BookingScreenProps) {
+export default function BookingScreen({ listing, form, onNavigate }: BookingScreenProps) {
   const { currentUser } = useAuth();
   const { theme } = useTheme();
   const [isFavorite, setIsFavorite] = useState(false);
@@ -27,14 +35,18 @@ export default function BookingScreen({ listing, onNavigate }: BookingScreenProp
   const [reviewerNames, setReviewerNames] = useState({});
 
   // Booking form state
-  const [checkInDate, setCheckInDate] = useState(new Date());
-  const [checkOutDate, setCheckOutDate] = useState(() => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    return tomorrow;
-  });
-  const [guests, setGuests] = useState(1);
-  const [specialRequests, setSpecialRequests] = useState('');
+  const initialCheckIn = form?.checkInDate ? new Date(form.checkInDate) : new Date();
+  const initialCheckOut = form?.checkOutDate
+    ? new Date(form.checkOutDate)
+    : (() => {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        return tomorrow;
+      })();
+  const [checkInDate, setCheckInDate] = useState(initialCheckIn);
+  const [checkOutDate, setCheckOutDate] = useState(initialCheckOut);
+  const [guests, setGuests] = useState(form?.guests ?? 1);
+  const [specialRequests, setSpecialRequests] = useState(form?.specialRequests ?? '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showError, setShowError] = useState(false);
@@ -255,6 +267,7 @@ export default function BookingScreen({ listing, onNavigate }: BookingScreenProp
         waiverAccepted: true,
         waiverType: waiverType,
         waiverAcceptedAt: new Date().toISOString(),
+        waiverTextSnapshot: getWaiverText(waiverType),
       };
 
       const result = await BookingService.createBooking(bookingData);
@@ -423,7 +436,20 @@ export default function BookingScreen({ listing, onNavigate }: BookingScreenProp
             style={{ marginRight: 8 }}
           />
           <Text style={{ fontSize: 14, color: '#333' }}>I have read and agree to the</Text>
-          <TouchableOpacity onPress={() => onNavigate?.('waiver', { listing: currentListing, waiverType })}>
+          <TouchableOpacity
+            onPress={() =>
+              onNavigate?.('waiver', {
+                listing: currentListing,
+                waiverType,
+                form: {
+                  checkInDate: formatDateForInput(checkInDate),
+                  checkOutDate: formatDateForInput(checkOutDate),
+                  guests,
+                  specialRequests,
+                },
+              })
+            }
+          >
             <Text style={{ fontSize: 14, color: '#2E7D32', fontWeight: '600' }}> Camper Waiver ({waiverType === 'northern-ireland' ? 'Northern Ireland' : 'Republic of Ireland'})</Text>
           </TouchableOpacity>
         </View>
