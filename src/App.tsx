@@ -24,6 +24,7 @@ import PrivacyScreen from './screens/PrivacyScreen';
 import JoinCamperScreen from './screens/JoinCamperScreen';
 import JoinHostScreen from './screens/JoinHostScreen';
 import ContactUsScreen from './screens/ContactUsScreen';
+import WaiverViewScreen from './screens/WaiverViewScreen';
 import AdminDashboard from './screens/AdminDashboard';
 import UserManagement from './screens/UserManagement';
 import UserDetails from './screens/UserDetails';
@@ -99,6 +100,8 @@ function AppContent() {
         return <JoinHostScreen onNavigate={handleNavigate} />;
       case 'contact':
         return <ContactUsScreen onNavigate={handleNavigate} />;
+      case 'waiver':
+        return <WaiverViewScreen onNavigate={handleNavigate} listing={(screenData as any)?.listing} waiverType={(screenData as any)?.waiverType} />;
       
       // Authenticated screens
       case 'home':

@@ -11,6 +11,10 @@ export interface Booking {
   endDate: string;
   totalPrice: number;
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+  // Waiver fields
+  waiverAccepted: boolean;
+  waiverType?: 'republic-ireland' | 'northern-ireland';
+  waiverAcceptedAt?: string;
   createdAt: string;
   updatedAt: string;
 }

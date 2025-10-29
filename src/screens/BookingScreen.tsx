@@ -6,6 +6,7 @@ import { LocalStorageService } from '../services/LocalStorageService';
 import { BookingService } from '../services/BookingService';
 import { FavoritesService } from '../services/FavoritesService';
 import { ReviewService } from '../services/ReviewService';
+import { detectWaiverType, WaiverType } from '../utils/Waiver';
 import { MessageService } from '../services/MessageService';
 
 interface BookingScreenProps {
@@ -40,6 +41,8 @@ export default function BookingScreen({ listing, onNavigate }: BookingScreenProp
   const [availabilityChecked, setAvailabilityChecked] = useState(false);
   const [isAvailable, setIsAvailable] = useState(true);
   const [checkingAvailability, setCheckingAvailability] = useState(false);
+  const [waiverAccepted, setWaiverAccepted] = useState(false);
+  const [waiverType, setWaiverType] = useState<WaiverType>(() => detectWaiverType({ county: (listing as any)?.county, location: (listing as any)?.location }));
 
   // Mock listing data if not provided
   const mockListing = {
@@ -60,6 +63,7 @@ export default function BookingScreen({ listing, onNavigate }: BookingScreenProp
   useEffect(() => {
     checkFavoriteStatus();
     loadReviews();
+    setWaiverType(detectWaiverType({ county: (currentListing as any)?.county, location: currentListing?.location }));
   }, []);
 
   const checkFavoriteStatus = async () => {
@@ -229,6 +233,12 @@ export default function BookingScreen({ listing, onNavigate }: BookingScreenProp
       return;
     }
 
+    if (!waiverAccepted) {
+      setError('You must read and accept the waiver to proceed');
+      setShowError(true);
+      return;
+    }
+
     try {
       setLoading(true);
       
@@ -241,7 +251,10 @@ export default function BookingScreen({ listing, onNavigate }: BookingScreenProp
         startDate: checkInDate.toISOString().split('T')[0],
         endDate: checkOutDate.toISOString().split('T')[0],
         totalPrice: calculateTotal(),
-        status: 'pending' as const
+        status: 'pending' as const,
+        waiverAccepted: true,
+        waiverType: waiverType,
+        waiverAcceptedAt: new Date().toISOString(),
       };
 
       const result = await BookingService.createBooking(bookingData);
@@ -399,6 +412,20 @@ export default function BookingScreen({ listing, onNavigate }: BookingScreenProp
               <Text style={styles.guestButtonText}>+</Text>
             </TouchableOpacity>
           </View>
+        </View>
+
+        {/* Waiver */}
+        <View style={{ marginBottom: 16, flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
+          <input
+            type="checkbox"
+            checked={waiverAccepted}
+            onChange={(e) => setWaiverAccepted(e.target.checked)}
+            style={{ marginRight: 8 }}
+          />
+          <Text style={{ fontSize: 14, color: '#333' }}>I have read and agree to the</Text>
+          <TouchableOpacity onPress={() => onNavigate?.('waiver', { listing: currentListing, waiverType })}>
+            <Text style={{ fontSize: 14, color: '#2E7D32', fontWeight: '600' }}> Camper Waiver ({waiverType === 'northern-ireland' ? 'Northern Ireland' : 'Republic of Ireland'})</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.specialRequestsInput}>
