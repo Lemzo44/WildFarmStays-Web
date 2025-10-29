@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 
 interface FAQsScreenProps {
@@ -7,6 +7,46 @@ interface FAQsScreenProps {
 
 export default function FAQsScreen({ onNavigate }: FAQsScreenProps) {
   const [expandedFAQ, setExpandedFAQ] = useState<string | null>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
+
+  const scrollToTop = () => {
+    // Try ScrollView ref first
+    if (scrollViewRef.current) {
+      scrollViewRef.current.scrollTo({ x: 0, y: 0, animated: false });
+    }
+    // Also try window scroll as fallback
+    if (typeof window !== 'undefined') {
+      window.scrollTo(0, 0);
+      document.body?.scrollTo(0, 0);
+      document.documentElement?.scrollTo(0, 0);
+    }
+  };
+
+  // Use useLayoutEffect for immediate scroll before paint
+  useLayoutEffect(() => {
+    scrollToTop();
+  }, []);
+
+  // Also use useEffect with multiple attempts
+  useEffect(() => {
+    scrollToTop();
+    
+    // Try after paint with requestAnimationFrame
+    requestAnimationFrame(() => {
+      requestAnimationFrame(scrollToTop);
+    });
+    
+    // Try after delays
+    const timeoutId1 = setTimeout(scrollToTop, 50);
+    const timeoutId2 = setTimeout(scrollToTop, 100);
+    const timeoutId3 = setTimeout(scrollToTop, 200);
+    
+    return () => {
+      clearTimeout(timeoutId1);
+      clearTimeout(timeoutId2);
+      clearTimeout(timeoutId3);
+    };
+  }, []);
 
   const faqs = [
     {
@@ -56,7 +96,7 @@ export default function FAQsScreen({ onNavigate }: FAQsScreenProps) {
   };
 
   return (
-    <ScrollView contentOffset={{ x: 0, y: 0 }} style={styles.container}>
+    <ScrollView ref={scrollViewRef} contentOffset={{ x: 0, y: 0 }} style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerButtons}>
           <TouchableOpacity onPress={() => onNavigate?.('landing')} style={styles.backButton}>

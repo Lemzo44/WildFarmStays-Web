@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -44,7 +44,37 @@ function AppContent() {
   const handleNavigate = (screen: string, data?: any) => {
     setCurrentScreen(screen);
     setScreenData(data);
+    // Scroll to top when navigating - use requestAnimationFrame for better timing
+    if (typeof window !== 'undefined') {
+      requestAnimationFrame(() => {
+        window.scrollTo(0, 0);
+        document.body?.scrollTo(0, 0);
+        document.documentElement?.scrollTo(0, 0);
+      });
+    }
   };
+
+  // Scroll to top when screen changes (additional safeguard)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const scrollToTop = () => {
+        window.scrollTo(0, 0);
+        document.body?.scrollTo(0, 0);
+        document.documentElement?.scrollTo(0, 0);
+      };
+      
+      // Try immediately
+      scrollToTop();
+      
+      // Try after paint
+      requestAnimationFrame(() => {
+        requestAnimationFrame(scrollToTop);
+      });
+      
+      // Try after a short delay
+      setTimeout(scrollToTop, 100);
+    }
+  }, [currentScreen]);
 
   const renderScreen = () => {
     switch (currentScreen) {

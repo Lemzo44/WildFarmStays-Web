@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 
 interface PrivacyScreenProps {
@@ -6,8 +6,40 @@ interface PrivacyScreenProps {
 }
 
 export default function PrivacyScreen({ onNavigate }: PrivacyScreenProps) {
+  const scrollViewRef = useRef<ScrollView>(null);
+
+  const scrollToTop = () => {
+    if (scrollViewRef.current) {
+      scrollViewRef.current.scrollTo({ x: 0, y: 0, animated: false });
+    }
+    if (typeof window !== 'undefined') {
+      window.scrollTo(0, 0);
+      document.body?.scrollTo(0, 0);
+      document.documentElement?.scrollTo(0, 0);
+    }
+  };
+
+  useLayoutEffect(() => {
+    scrollToTop();
+  }, []);
+
+  useEffect(() => {
+    scrollToTop();
+    requestAnimationFrame(() => {
+      requestAnimationFrame(scrollToTop);
+    });
+    const timeoutId1 = setTimeout(scrollToTop, 50);
+    const timeoutId2 = setTimeout(scrollToTop, 100);
+    const timeoutId3 = setTimeout(scrollToTop, 200);
+    return () => {
+      clearTimeout(timeoutId1);
+      clearTimeout(timeoutId2);
+      clearTimeout(timeoutId3);
+    };
+  }, []);
+
   return (
-    <ScrollView contentOffset={{ x: 0, y: 0 }} style={styles.container}>
+    <ScrollView ref={scrollViewRef} contentOffset={{ x: 0, y: 0 }} style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerButtons}>
           <TouchableOpacity onPress={() => onNavigate?.('landing')} style={styles.backButton}>
