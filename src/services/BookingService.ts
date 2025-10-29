@@ -205,7 +205,19 @@ export class BookingService {
           waiver_text_snapshot: (bookingData as any).waiverTextSnapshot ?? null,
         } as any;
 
-        const created = await APIService.create<any>('bookings', payload);
+        // Insert directly via Supabase to avoid silent localStorage fallback
+        const created = await APIService.query(async (client) => {
+          const { data, error } = await client
+            .from('bookings')
+            .insert(payload)
+            .select()
+            .single();
+          if (error) {
+            console.error('Supabase insert error (bookings):', error);
+            throw error;
+          }
+          return data;
+        });
         const mapped: Booking = {
           id: created.id,
           listingId: created.listing_id,

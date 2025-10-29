@@ -18,6 +18,13 @@ export const supabase = supabaseUrl && supabaseAnonKey
     })
   : null;
 
-// Check if Supabase should be used (feature flag)
-export const useSupabase = import.meta.env.VITE_USE_SUPABASE === 'true' && supabase !== null;
+// Check if Supabase should be used (feature flag, case-insensitive)
+const rawFlag = (import.meta.env.VITE_USE_SUPABASE || '').toString();
+const normalizedFlag = rawFlag.trim().toLowerCase();
+export const useSupabase = normalizedFlag === 'true' && supabase !== null;
+
+// Optional: tiny debug helper
+if (typeof window !== 'undefined') {
+  (window as any).__WFS_USE_SUPABASE__ = useSupabase;
+}
 
