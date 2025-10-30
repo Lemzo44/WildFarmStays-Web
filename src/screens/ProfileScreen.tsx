@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, TextInput
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { FarmerRatingService } from '../services/FarmerRatingService';
+import { APIService } from '../services/APIService';
 import { supabase } from '../lib/supabase';
 
 interface ProfileScreenProps {
