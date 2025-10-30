@@ -190,8 +190,8 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps = {}) {
                   <Text style={styles.priceText}>£{(stay.totalPrice || stay.price || 0).toFixed(2)}</Text>
                 </View>
               </View>
-              <View style={styles.arrowIcon}>
-                <Text style={styles.arrowText}>Write Review →</Text>
+              <View style={styles.ctaContainer}>
+                <Text style={styles.ctaText}>Write Review →</Text>
               </View>
             </TouchableOpacity>
           ))}
@@ -459,5 +459,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     fontWeight: 'bold',
+  },
+  ctaContainer: {
+    marginLeft: 8,
+    justifyContent: 'center',
+  },
+  ctaText: {
+    fontSize: 14,
+    color: '#2E7D32',
+    fontWeight: '600',
   },
 });

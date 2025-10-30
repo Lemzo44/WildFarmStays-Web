@@ -24,12 +24,12 @@ export class APIService {
   }): Promise<T[]> {
     if (!this.shouldUseSupabase()) {
       // Fallback to localStorage
-      return LocalStorageService.getAll(table) as T[];
+      return (await LocalStorageService.getAll(table)) as T[];
     }
 
     if (!supabase) {
       console.warn('Supabase not initialized, falling back to localStorage');
-      return LocalStorageService.getAll(table) as T[];
+      return (await LocalStorageService.getAll(table)) as T[];
     }
 
     try {
@@ -67,7 +67,7 @@ export class APIService {
     } catch (error) {
       console.error(`Error in APIService.get for ${table}:`, error);
       // Fallback to localStorage on error
-      return LocalStorageService.getAll(table) as T[];
+      return (await LocalStorageService.getAll(table)) as T[];
     }
   }
 
@@ -76,12 +76,12 @@ export class APIService {
    */
   static async getById<T>(table: string, id: string): Promise<T | null> {
     if (!this.shouldUseSupabase()) {
-      return LocalStorageService.getById(table, id) as T | null;
+      return (await LocalStorageService.getById(table, id)) as T | null;
     }
 
     if (!supabase) {
       console.warn('Supabase not initialized, falling back to localStorage');
-      return LocalStorageService.getById(table, id) as T | null;
+      return (await LocalStorageService.getById(table, id)) as T | null;
     }
 
     try {
@@ -112,12 +112,14 @@ export class APIService {
    */
   static async create<T>(table: string, data: Partial<T>): Promise<T> {
     if (!this.shouldUseSupabase()) {
-      return LocalStorageService.save(table, data as any) as T;
+      await LocalStorageService.save(table, data as any);
+      return data as T;
     }
 
     if (!supabase) {
       console.warn('Supabase not initialized, falling back to localStorage');
-      return LocalStorageService.save(table, data as any) as T;
+      await LocalStorageService.save(table, data as any);
+      return data as T;
     }
 
     try {
@@ -135,8 +137,9 @@ export class APIService {
       return inserted as T;
     } catch (error) {
       console.error(`Error in APIService.create for ${table}:`, error);
-      // Fallback to localStorage
-      return LocalStorageService.save(table, data as any) as T;
+      // Do not fallback to localStorage on create when Supabase is enabled
+      // so callers can handle errors (e.g., unique constraint violations)
+      throw error;
     }
   }
 
@@ -145,28 +148,30 @@ export class APIService {
    */
   static async update<T>(table: string, id: string, updates: Partial<T>): Promise<T> {
     if (!this.shouldUseSupabase()) {
-      const existing = LocalStorageService.getById(table, id);
+      const existing = await LocalStorageService.getById(table, id);
       if (!existing) {
         throw new Error(`Record not found: ${table}/${id}`);
       }
       const updated = { ...existing, ...updates };
-      return LocalStorageService.save(table, updated) as T;
+      await LocalStorageService.save(table, updated);
+      return updated as T;
     }
 
     if (!supabase) {
       console.warn('Supabase not initialized, falling back to localStorage');
-      const existing = LocalStorageService.getById(table, id);
+      const existing = await LocalStorageService.getById(table, id);
       if (!existing) {
         throw new Error(`Record not found: ${table}/${id}`);
       }
       const updated = { ...existing, ...updates };
-      return LocalStorageService.save(table, updated) as T;
+      await LocalStorageService.save(table, updated);
+      return updated as T;
     }
 
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from(table)
-        .update(updates as any)
+        .update(updates as unknown as Record<string, unknown>)
         .eq('id', id)
         .select()
         .single();
@@ -180,12 +185,13 @@ export class APIService {
     } catch (error) {
       console.error(`Error in APIService.update for ${table}:`, error);
       // Fallback to localStorage
-      const existing = LocalStorageService.getById(table, id);
+      const existing = await LocalStorageService.getById(table, id);
       if (!existing) {
         throw new Error(`Record not found: ${table}/${id}`);
       }
       const updated = { ...existing, ...updates };
-      return LocalStorageService.save(table, updated) as T;
+      await LocalStorageService.save(table, updated);
+      return updated as T;
     }
   }
 
@@ -194,13 +200,13 @@ export class APIService {
    */
   static async delete(table: string, id: string): Promise<void> {
     if (!this.shouldUseSupabase()) {
-      LocalStorageService.delete(table, id);
+      await LocalStorageService.delete(table, id);
       return;
     }
 
     if (!supabase) {
       console.warn('Supabase not initialized, falling back to localStorage');
-      LocalStorageService.delete(table, id);
+      await LocalStorageService.delete(table, id);
       return;
     }
 
@@ -217,7 +223,7 @@ export class APIService {
     } catch (error) {
       console.error(`Error in APIService.delete for ${table}:`, error);
       // Fallback to localStorage
-      LocalStorageService.delete(table, id);
+      await LocalStorageService.delete(table, id);
     }
   }
 

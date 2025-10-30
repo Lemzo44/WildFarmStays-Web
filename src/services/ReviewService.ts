@@ -40,21 +40,22 @@ export class ReviewService {
           approved: reviewData.approved || false,
         };
 
-        const created = await APIService.create('reviews', supabaseReviewData);
+        const created = await APIService.create<any>('reviews', supabaseReviewData);
         
         // Normalize response
+        const row: any = created;
         return {
-          id: created.id,
-          listingId: created.listing_id || created.listingId,
-          reviewerId: created.reviewer_id || created.reviewerId,
-          reviewerName: reviewData.reviewerName, // Keep from input
-          rating: created.rating,
-          comment: created.comment || '',
-          title: created.title || undefined,
-          approved: created.approved || false,
-          bookingId: created.booking_id || created.bookingId,
-          createdAt: created.created_at || created.createdAt || new Date().toISOString(),
-          updatedAt: created.updated_at || created.updatedAt || new Date().toISOString(),
+          id: row.id,
+          listingId: row.listing_id || row.listingId,
+          reviewerId: row.reviewer_id || row.reviewerId,
+          reviewerName: reviewData.reviewerName,
+          rating: row.rating,
+          comment: row.comment || '',
+          title: row.title || undefined,
+          approved: row.approved || false,
+          bookingId: row.booking_id || row.bookingId,
+          createdAt: row.created_at || row.createdAt || new Date().toISOString(),
+          updatedAt: row.updated_at || row.updatedAt || new Date().toISOString(),
         };
       } else {
         // Fallback to localStorage
@@ -68,8 +69,12 @@ export class ReviewService {
         await LocalStorageService.save('reviews', review);
         return review;
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating review:', error);
+      // Handle unique constraint: one review per (listing_id, reviewer_id)
+      if (error?.code === '23505') {
+        throw new Error('You have already submitted a review for this listing.');
+      }
       throw new Error('Failed to create review');
     }
   }

@@ -111,9 +111,9 @@ export default function ReviewScreen({ listing, booking, onNavigate }: ReviewScr
         setError(result.message || 'Failed to submit review');
         setShowError(true);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error submitting review:', error);
-      setError('Failed to submit review');
+      setError(error?.message || 'Failed to submit review');
       setShowError(true);
     } finally {
       setLoading(false);
