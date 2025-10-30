@@ -144,7 +144,7 @@ function AppContent() {
       case 'edit-listing':
         return <EditListingScreen listing={screenData} onNavigate={handleNavigate} />;
       case 'farmer-rating':
-        return <FarmerRatingScreen onNavigate={handleNavigate} />;
+        return <FarmerRatingScreen bookingId={(screenData as any)?.bookingId} onNavigate={handleNavigate} />;
       case 'booking-details':
         return <BookingDetailsScreen booking={screenData} onNavigate={handleNavigate} />;
       

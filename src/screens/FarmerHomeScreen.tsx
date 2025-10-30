@@ -122,6 +122,7 @@ export default function FarmerHomeScreen({ onNavigate }: FarmerHomeScreenProps =
           endDate: b.end_date || b.endDate,
           status: b.status,
           totalPrice: Number(b.total_price ?? b.totalPrice ?? 0),
+          raw: b,
         }));
 
       const mockRecentMessages = [
@@ -141,7 +142,29 @@ export default function FarmerHomeScreen({ onNavigate }: FarmerHomeScreenProps =
         },
       ];
 
-      setStats(mockStats);
+      // Compute rating from real reviews for farmer's listings
+      let avgRating = 0;
+      let totalReviews = 0;
+      try {
+        const allReviews = useSupabaseBackend
+          ? await APIService.get<any>('reviews', { select: '*' })
+          : await LocalStorageService.getAll('reviews');
+        const listingIdSet = new Set(farmerListings.map((l: any) => l.id));
+        const relevant = (allReviews || []).filter((r: any) => listingIdSet.has(r.listing_id || r.listingId));
+        totalReviews = relevant.length;
+        if (totalReviews > 0) {
+          const sum = relevant.reduce((s: number, r: any) => s + Number(r.rating || 0), 0);
+          avgRating = sum / totalReviews;
+        }
+      } catch {
+        avgRating = 0; totalReviews = 0;
+      }
+
+      setStats({
+        ...mockStats,
+        totalReviews,
+        averageRating: avgRating,
+      });
       setRecentBookings(recentFromData);
       setRecentMessages(mockRecentMessages);
     } catch (error) {
@@ -269,6 +292,14 @@ export default function FarmerHomeScreen({ onNavigate }: FarmerHomeScreenProps =
                   <Text style={styles.priceText}>£{booking.totalPrice.toFixed(2)}</Text>
                 </View>
               </View>
+              {booking.status === 'completed' && (
+                <TouchableOpacity
+                  style={styles.rateButton}
+                  onPress={() => onNavigate?.('farmer-rating')}
+                >
+                  <Text style={styles.rateButtonText}>Rate Camper →</Text>
+                </TouchableOpacity>
+              )}
             </View>
           ))
         ) : (
@@ -501,6 +532,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#2E7D32',
+  },
+  rateButton: {
+    marginLeft: 8,
+    alignSelf: 'center',
+    backgroundColor: '#E8F5E8',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  rateButtonText: {
+    color: '#2E7D32',
+    fontWeight: '600',
+    fontSize: 12,
   },
   messageItem: {
     flexDirection: 'row',
