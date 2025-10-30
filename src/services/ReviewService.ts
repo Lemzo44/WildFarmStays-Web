@@ -86,26 +86,57 @@ export class ReviewService {
     try {
       if (useSupabase) {
         // Fetch reviews for this listing (only approved ones for public, all for admin)
-        const reviews = await APIService.get('reviews', {
+        const reviews = await APIService.get<any>('reviews', {
           filter: { column: 'listing_id', operator: 'eq', value: listingId },
           orderBy: { column: 'created_at', ascending: false }
         });
-        
-        // Normalize to Review interface
-        // Note: We'll need to fetch reviewer names from profiles separately if needed
-        return reviews.map((review: any) => ({
-          id: review.id,
-          listingId: review.listing_id || review.listingId,
-          reviewerId: review.reviewer_id || review.reviewerId,
-          reviewerName: review.reviewer_name || review.reviewerName || 'Anonymous', // TODO: Join with profiles
-          rating: review.rating,
-          comment: review.comment || '',
-          title: review.title || undefined,
-          approved: review.approved || false,
-          bookingId: review.booking_id || review.bookingId,
-          createdAt: review.created_at || review.createdAt || '',
-          updatedAt: review.updated_at || review.updatedAt || '',
-        }));
+
+        // Batch fetch reviewer names from profiles
+        const reviewerIdSet = new Set<string>();
+        (reviews || []).forEach((r: any) => {
+          const rid = r.reviewer_id || r.reviewerId;
+          if (rid) reviewerIdSet.add(rid);
+        });
+
+        const idList = Array.from(reviewerIdSet);
+        const idToName: Record<string, string> = {};
+        if (idList.length > 0) {
+          try {
+            const profiles = await APIService.query(async (client) => {
+              const { data, error } = await client
+                .from('profiles')
+                .select('id, first_name, last_name')
+                .in('id', idList);
+              if (error) throw error;
+              return data as any[];
+            });
+            for (const p of profiles || []) {
+              const fn = p.first_name || '';
+              const ln = p.last_name || '';
+              idToName[p.id] = `${fn} ${ln}`.trim() || 'Anonymous';
+            }
+          } catch (e) {
+            // Ignore; fallback to Anonymous below
+          }
+        }
+
+        // Normalize to Review interface including reviewer names
+        return (reviews || []).map((review: any) => {
+          const rid = review.reviewer_id || review.reviewerId;
+          return {
+            id: review.id,
+            listingId: review.listing_id || review.listingId,
+            reviewerId: rid,
+            reviewerName: idToName[rid] || review.reviewer_name || review.reviewerName || 'Anonymous',
+            rating: review.rating,
+            comment: review.comment || '',
+            title: review.title || undefined,
+            approved: review.approved || false,
+            bookingId: review.booking_id || review.bookingId,
+            createdAt: review.created_at || review.createdAt || '',
+            updatedAt: review.updated_at || review.updatedAt || '',
+          } as Review;
+        });
       } else {
         const allReviews = await LocalStorageService.getAll('reviews');
         return allReviews.filter((review: Review) => review.listingId === listingId);
