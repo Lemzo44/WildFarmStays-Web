@@ -209,3 +209,4 @@ SELECT 'Support Tickets', COUNT(*) FROM public.support_tickets
 UNION ALL
 SELECT 'Messages', COUNT(*) FROM public.messages;
 
+

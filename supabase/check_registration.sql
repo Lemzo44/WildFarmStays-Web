@@ -46,3 +46,4 @@ FROM auth.users u
 LEFT JOIN public.profiles p ON u.id = p.id
 ORDER BY u.created_at DESC;
 
+

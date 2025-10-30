@@ -51,3 +51,4 @@ WHERE email = 'USER_EMAIL_HERE'  -- Replace with actual email
   AND role != 'camper';
 */
 
+

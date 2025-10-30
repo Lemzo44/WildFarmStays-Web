@@ -40,3 +40,4 @@ SELECT
 FROM public.profiles p
 ORDER BY p.created_at DESC;
 
+

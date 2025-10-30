@@ -14,3 +14,4 @@ CREATE POLICY "Users can insert own profile during registration"
 -- If the policy already exists, you can skip this or drop and recreate:
 -- DROP POLICY IF EXISTS "Users can insert own profile during registration" ON public.profiles;
 
+

@@ -353,3 +353,4 @@ CREATE TRIGGER update_reviews_updated_at BEFORE UPDATE ON public.reviews
 CREATE TRIGGER update_support_tickets_updated_at BEFORE UPDATE ON public.support_tickets
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+
