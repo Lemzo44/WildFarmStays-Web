@@ -58,14 +58,18 @@ export default function MessagesScreen() {
           
           // Fetch listing if available (from first message)
           let listingTitle = 'Farm Listing';
+          let listingId: string | undefined = undefined;
           try {
             const convMessages = await MessageService.getConversationMessages(conv.id);
-            if (convMessages.length > 0 && convMessages[0].listingId) {
-              const listing = useSupabase
-                ? await APIService.getById('listings', convMessages[0].listingId)
-                : null;
-              if (listing) {
-                listingTitle = listing.title || listingTitle;
+            if (convMessages.length > 0) {
+              listingId = convMessages[0].listingId;
+              if (listingId) {
+                const listing = useSupabase
+                  ? await APIService.getById('listings', listingId)
+                  : null;
+                if (listing) {
+                  listingTitle = listing.title || listingTitle;
+                }
               }
             }
           } catch (error) {
@@ -80,6 +84,7 @@ export default function MessagesScreen() {
               avatar: otherUser?.role === 'farmer' ? '🚜' : '🏕️'
             },
             listing: {
+              id: listingId,
               title: listingTitle
             },
             lastMessage: {
