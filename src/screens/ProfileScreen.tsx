@@ -18,9 +18,25 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onNavigate }) => {
   });
   const [showRatings, setShowRatings] = useState(false);
   const [ratings, setRatings] = useState<any[]>([]);
+  const [editMode, setEditMode] = useState(false);
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [farmName, setFarmName] = useState('');
+  const [farmAddress, setFarmAddress] = useState('');
+  const [postcode, setPostcode] = useState('');
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     loadRatingStats();
+    if (currentUser) {
+      setFirstName(currentUser.firstName || '');
+      setLastName(currentUser.lastName || '');
+      setPhone(currentUser.phone || '');
+      setFarmName(currentUser.farmName || '');
+      setFarmAddress(currentUser.farmAddress || '');
+      setPostcode(currentUser.postcode || '');
+    }
   }, [currentUser]);
 
   const loadRatingStats = async () => {
@@ -65,7 +81,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onNavigate }) => {
   };
 
   const handleEditProfile = () => {
-    console.log('Edit profile');
+    setEditMode(true);
   };
 
   const handleSubscription = () => {
@@ -107,9 +123,26 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onNavigate }) => {
             </Text>
           </View>
           <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>
-              {currentUser?.firstName} {currentUser?.lastName}
-            </Text>
+            {!editMode ? (
+              <Text style={styles.profileName}>
+                {currentUser?.firstName} {currentUser?.lastName}
+              </Text>
+            ) : (
+              <>
+                <TextInput
+                  style={styles.input}
+                  placeholder="First Name"
+                  value={firstName}
+                  onChangeText={setFirstName}
+                />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Last Name"
+                  value={lastName}
+                  onChangeText={setLastName}
+                />
+              </>
+            )}
             <Text style={styles.profileEmail}>{currentUser?.email}</Text>
             <View style={styles.roleBadge}>
               <Text style={styles.roleText}>
@@ -126,6 +159,40 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onNavigate }) => {
             )}
           </View>
         </View>
+
+        {/* Phone and Farmer fields */}
+        {editMode ? (
+          <View style={{ marginTop: 12 }}>
+            <TextInput
+              style={styles.input}
+              placeholder="Phone"
+              value={phone}
+              onChangeText={setPhone}
+            />
+            {currentUser?.role === 'farmer' && (
+              <>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Farm Name"
+                  value={farmName}
+                  onChangeText={setFarmName}
+                />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Farm Address"
+                  value={farmAddress}
+                  onChangeText={setFarmAddress}
+                />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Postcode"
+                  value={postcode}
+                  onChangeText={setPostcode}
+                />
+              </>
+            )}
+          </View>
+        ) : null}
       </View>
 
       <View style={styles.card}>
@@ -264,9 +331,60 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onNavigate }) => {
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Quick Actions</Text>
         
-        <TouchableOpacity style={styles.actionButton} onPress={handleEditProfile}>
-          <Text style={styles.actionButtonText}>✏️ Edit Profile</Text>
-        </TouchableOpacity>
+        {!editMode ? (
+          <TouchableOpacity style={styles.actionButton} onPress={handleEditProfile}>
+            <Text style={styles.actionButtonText}>✏️ Edit Profile</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={{ gap: 8 }}>
+            <TouchableOpacity
+              style={styles.primaryButton}
+              onPress={async () => {
+                if (!currentUser) return;
+                try {
+                  setSaving(true);
+                  const payload: any = {
+                    first_name: firstName.trim(),
+                    last_name: lastName.trim(),
+                    phone: phone.trim() || null,
+                  };
+                  if (currentUser.role === 'farmer') {
+                    payload.farm_name = farmName.trim() || null;
+                    payload.farm_address = farmAddress.trim() || null;
+                    payload.postcode = postcode.trim() || null;
+                  }
+                  await APIService.update('profiles', currentUser.id, payload);
+                  alert('Profile updated successfully.');
+                  setEditMode(false);
+                } catch (e) {
+                  console.error('Error updating profile:', e);
+                  alert('Failed to update profile.');
+                } finally {
+                  setSaving(false);
+                }
+              }}
+              disabled={saving}
+            >
+              <Text style={styles.primaryButtonText}>{saving ? 'Saving...' : 'Save Changes'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => {
+                setEditMode(false);
+                if (currentUser) {
+                  setFirstName(currentUser.firstName || '');
+                  setLastName(currentUser.lastName || '');
+                  setPhone(currentUser.phone || '');
+                  setFarmName(currentUser.farmName || '');
+                  setFarmAddress(currentUser.farmAddress || '');
+                  setPostcode(currentUser.postcode || '');
+                }
+              }}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        )}
         
         <TouchableOpacity style={styles.actionButton} onPress={handleChangePassword}>
           <Text style={styles.actionButtonText}>🔒 Change Password</Text>
@@ -435,6 +553,26 @@ const styles = StyleSheet.create({
   ratingText: {
     fontSize: 12,
     color: '#666',
+  },
+  input: {
+    backgroundColor: '#F5F5F5',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    marginTop: 8,
+  },
+  primaryButton: {
+    backgroundColor: '#2E7D32',
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  primaryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
   verificationRow: {
     flexDirection: 'row',

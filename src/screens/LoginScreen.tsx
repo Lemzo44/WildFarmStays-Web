@@ -10,10 +10,12 @@ export default function LoginScreen({ onNavigate }: LoginScreenProps) {
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
 
   const handleSubmit = async () => {
+    setError('');
     if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
+      setError('Please enter both email and password.');
       return;
     }
 
@@ -21,13 +23,13 @@ export default function LoginScreen({ onNavigate }: LoginScreenProps) {
       const success = await login(email, password);
 
       if (!success) {
-        Alert.alert('Error', 'Login failed. Please check your credentials.');
+        setError('Invalid email or password. Please try again.');
       } else {
         // Navigate to home after successful login
         onNavigate?.('home');
       }
     } catch (error) {
-      Alert.alert('Error', 'An error occurred');
+      setError('An unexpected error occurred. Please try again.');
     }
   };
 
@@ -68,6 +70,10 @@ export default function LoginScreen({ onNavigate }: LoginScreenProps) {
         <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
           <Text style={styles.submitButtonText}>Login</Text>
         </TouchableOpacity>
+
+        {error ? (
+          <Text style={styles.errorText}>{error}</Text>
+        ) : null}
 
         <TouchableOpacity
           style={styles.switchButton}
@@ -184,6 +190,11 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  errorText: {
+    marginTop: 12,
+    color: '#D32F2F',
+    textAlign: 'center',
   },
   switchButton: {
     alignItems: 'center',
