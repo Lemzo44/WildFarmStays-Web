@@ -160,10 +160,10 @@ export default function SupportTickets({ onNavigate }: SupportTicketsProps) {
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.filterButton, filterStatus === 'in-progress' && styles.filterButtonActive]}
-                  onPress={() => setFilterStatus('in-progress')}
+                  style={[styles.filterButton, filterStatus === 'in_progress' && styles.filterButtonActive]}
+                  onPress={() => setFilterStatus('in_progress')}
                 >
-                  <Text style={[styles.filterButtonText, filterStatus === 'in-progress' && styles.filterButtonTextActive]}>
+                  <Text style={[styles.filterButtonText, filterStatus === 'in_progress' && styles.filterButtonTextActive]}>
                     In Progress
                   </Text>
                 </TouchableOpacity>

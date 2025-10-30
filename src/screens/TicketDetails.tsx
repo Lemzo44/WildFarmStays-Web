@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert 
 import { LocalStorageService } from '../services/LocalStorageService';
 import { APIService } from '../services/APIService';
 import { useSupabase } from '../lib/supabase';
+import { messageEmailWebhook, loginUrl } from '../lib/config';
 
 interface TicketDetailsProps {
   ticket?: any;
@@ -97,6 +98,27 @@ export default function TicketDetails({ ticket, onNavigate }: TicketDetailsProps
           status: ticketData.status === 'open' ? 'in_progress' : ticketData.status // Auto-update status if open
         });
         
+        // Send email notification to the user
+        try {
+          if (messageEmailWebhook && ticketData.userEmail) {
+            await fetch(messageEmailWebhook, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                toEmail: ticketData.userEmail,
+                toName: ticketData.userName || 'User',
+                subject: `Response to your support ticket: ${ticketData.subject || 'Contact Us Inquiry'}`,
+                messagePreview: responseText.slice(0, 160),
+                loginUrl,
+                senderName: 'WildFarmStays Support Team',
+              }),
+            });
+          }
+        } catch (emailError) {
+          console.warn('Failed to send email notification:', emailError);
+          // Don't fail the whole operation if email fails
+        }
+        
         // Reload ticket data
         const updated = await APIService.getById('support_tickets', ticketData.id);
         setTicketData({
@@ -107,7 +129,7 @@ export default function TicketDetails({ ticket, onNavigate }: TicketDetailsProps
           createdAt: updated.created_at || updated.createdAt,
         });
         
-        Alert.alert('Success', 'Response saved successfully');
+        Alert.alert('Success', 'Response saved and email notification sent to user');
         setResponseText('');
       } else {
         // Fallback to localStorage
@@ -174,10 +196,10 @@ export default function TicketDetails({ ticket, onNavigate }: TicketDetailsProps
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.statusOption, newStatus === 'in-progress' && styles.statusOptionActive]}
-              onPress={() => setNewStatus('in-progress')}
+              style={[styles.statusOption, newStatus === 'in_progress' && styles.statusOptionActive]}
+              onPress={() => setNewStatus('in_progress')}
             >
-              <Text style={[styles.statusOptionText, newStatus === 'in-progress' && styles.statusOptionTextActive]}>
+              <Text style={[styles.statusOptionText, newStatus === 'in_progress' && styles.statusOptionTextActive]}>
                 In Progress
               </Text>
             </TouchableOpacity>

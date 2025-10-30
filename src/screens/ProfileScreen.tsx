@@ -394,6 +394,10 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onNavigate }) => {
         <TouchableOpacity style={styles.actionButton} onPress={() => onNavigate?.('contact')}>
           <Text style={styles.actionButtonText}>❓ Help & Support</Text>
         </TouchableOpacity>
+        
+        <TouchableOpacity style={styles.actionButton} onPress={() => onNavigate?.('my-support-tickets')}>
+          <Text style={styles.actionButtonText}>📬 My Support Tickets</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.card}>

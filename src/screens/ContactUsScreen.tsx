@@ -144,6 +144,15 @@ export default function ContactUsScreen({ onNavigate }: ContactUsScreenProps) {
           Have questions or feedback? Send us a message and we'll get back to you within 24 hours.
         </Text>
 
+        {currentUser && (
+          <TouchableOpacity 
+            style={styles.viewTicketsButton}
+            onPress={() => onNavigate?.('my-support-tickets')}
+          >
+            <Text style={styles.viewTicketsButtonText}>📬 View My Support Tickets</Text>
+          </TouchableOpacity>
+        )}
+
         <View style={styles.formSection}>
           <Text style={styles.inputLabel}>Name *</Text>
           <TextInput
@@ -351,6 +360,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   successBannerText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  viewTicketsButton: {
+    backgroundColor: '#2196F3',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  viewTicketsButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',

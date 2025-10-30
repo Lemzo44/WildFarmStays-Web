@@ -25,6 +25,8 @@ import PrivacyScreen from './screens/PrivacyScreen';
 import JoinCamperScreen from './screens/JoinCamperScreen';
 import JoinHostScreen from './screens/JoinHostScreen';
 import ContactUsScreen from './screens/ContactUsScreen';
+import MySupportTicketsScreen from './screens/MySupportTicketsScreen';
+import MyTicketDetailsScreen from './screens/MyTicketDetailsScreen';
 import WaiverViewScreen from './screens/WaiverViewScreen';
 import AdminDashboard from './screens/AdminDashboard';
 import UserManagement from './screens/UserManagement';
@@ -101,6 +103,10 @@ function AppContent() {
         return <JoinHostScreen onNavigate={handleNavigate} />;
       case 'contact':
         return <ContactUsScreen onNavigate={handleNavigate} />;
+      case 'my-support-tickets':
+        return <MySupportTicketsScreen onNavigate={handleNavigate} />;
+      case 'my-ticket-details':
+        return <MyTicketDetailsScreen ticket={(screenData as any)?.ticket || screenData} onNavigate={handleNavigate} />;
       case 'waiver':
         return (
           <WaiverViewScreen
