@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'rea
 import { useAuth } from '../contexts/AuthContext';
 import { LocalStorageService } from '../services/LocalStorageService';
 import { BookingService } from '../services/BookingService';
+import { ReviewService } from '../services/ReviewService';
 import { useSupabase } from '../lib/supabase';
 import FarmerHomeScreen from './FarmerHomeScreen';
 
@@ -16,6 +17,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps = {}) {
   const [upcomingStays, setUpcomingStays] = useState([]);
   const [favoriteFarms, setFavoriteFarms] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [reviewedListingIds, setReviewedListingIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     // Redirect admins to admin dashboard
@@ -34,6 +36,17 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps = {}) {
       let userBookings: any[] = [];
       if (useSupabase && currentUser?.id) {
         userBookings = await BookingService.getUserBookings(currentUser.id, 'camper');
+        // Load user's reviews to hide the Write Review CTA for already reviewed listings
+        try {
+          const userReviews = await ReviewService.getUserReviews(currentUser.id);
+          const reviewedIds = new Set<string>(
+            (userReviews || []).map((r: any) => r.listingId || r.listing_id)
+          );
+          setReviewedListingIds(reviewedIds);
+        } catch (e) {
+          // Non-fatal; if fails, we simply show the CTA
+          setReviewedListingIds(new Set());
+        }
       } else {
         const allBookings = await LocalStorageService.getAll('bookings');
         userBookings = allBookings.filter((booking: any) => 
@@ -163,17 +176,23 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps = {}) {
       {recentStays.length > 0 && (
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Recent Stays</Text>
-          {recentStays.map((stay: any) => (
+          {recentStays.map((stay: any) => {
+            const stayListingId = stay.listingId || stay.listing_id;
+            const hasReviewed = reviewedListingIds.has(stayListingId);
+            return (
             <TouchableOpacity
               key={stay.id}
               style={styles.stayItem}
-              onPress={() => onNavigate?.('review', {
-                booking: stay,
-                listing: {
-                  id: stay.listingId || stay.listing_id,
-                  title: stay.listingTitle || stay.title || 'Farm Stay',
-                },
-              })}
+              onPress={() => {
+                if (hasReviewed) return; // Disable navigation if already reviewed
+                onNavigate?.('review', {
+                  booking: stay,
+                  listing: {
+                    id: stayListingId,
+                    title: stay.listingTitle || stay.title || 'Farm Stay',
+                  },
+                });
+              }}
             >
               <View style={styles.stayIcon}>
                 <Text style={styles.stayIconText}>🏠</Text>
@@ -191,10 +210,13 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps = {}) {
                 </View>
               </View>
               <View style={styles.ctaContainer}>
-                <Text style={styles.ctaText}>Write Review →</Text>
+                <Text style={[styles.ctaText, hasReviewed && styles.ctaTextDisabled]}>
+                  {hasReviewed ? 'Reviewed' : 'Write Review →'}
+                </Text>
               </View>
             </TouchableOpacity>
-          ))}
+            );
+          })}
         </View>
       )}
 
@@ -468,5 +490,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#2E7D32',
     fontWeight: '600',
+  },
+  ctaTextDisabled: {
+    color: '#9E9E9E',
   },
 });
