@@ -133,15 +133,14 @@ export default function FarmerHomeScreen({ onNavigate }: FarmerHomeScreenProps =
           : await LocalStorageService.getAll('messages');
         const msgsForFarmer = (allMsgs || []).filter((m: any) => (m.sender_id || m.senderId) === currentUser?.id || (m.receiver_id || m.receiverId) === currentUser?.id);
 
-        // Group by conversation (prefer UUID conversation_id, fallback to sorted pair)
+        // Group by participant pair (stable key) to avoid duplicate groups when some rows lack UUID conversation_id
         const convoMap = new Map<string, any[]>();
         for (const m of msgsForFarmer) {
           const a = String(m.sender_id || m.senderId);
           const b = String(m.receiver_id || m.receiverId);
           const pairId = [a, b].sort().join('-');
-          const convId = (m.conversation_id && typeof m.conversation_id === 'string') ? m.conversation_id : pairId;
-          if (!convoMap.has(convId)) convoMap.set(convId, []);
-          convoMap.get(convId)!.push(m);
+          if (!convoMap.has(pairId)) convoMap.set(pairId, []);
+          convoMap.get(pairId)!.push(m);
         }
 
         // For each conversation, pick the latest message

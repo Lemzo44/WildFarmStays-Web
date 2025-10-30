@@ -1,6 +1,7 @@
 import { LocalStorageService } from './LocalStorageService';
 import { APIService } from './APIService';
 import { useSupabase } from '../lib/supabase';
+import { loginUrl, messageEmailWebhook } from '../lib/config';
 
 export interface Message {
   id: string;
@@ -40,6 +41,43 @@ export class MessageService {
       const v = c === 'x' ? r : (r & 0x3) | 0x8;
       return v.toString(16);
     });
+  }
+
+  private static async notifyRecipientEmail(params: {
+    recipientId: string;
+    senderName: string;
+    messageText: string;
+  }): Promise<void> {
+    try {
+      if (!messageEmailWebhook) return;
+      // Fetch recipient email
+      let toEmail = '';
+      let toName = 'User';
+      try {
+        const profile = await APIService.getById<any>('profiles', params.recipientId);
+        toEmail = profile?.email || '';
+        const fn = profile?.first_name || profile?.firstName || '';
+        const ln = profile?.last_name || profile?.lastName || '';
+        toName = `${fn} ${ln}`.trim() || toName;
+      } catch {}
+      if (!toEmail) return;
+
+      await fetch(messageEmailWebhook, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          toEmail,
+          toName,
+          subject: 'You have a new message on WildFarmStays',
+          messagePreview: params.messageText?.slice(0, 160) || '',
+          loginUrl,
+          senderName: params.senderName,
+        }),
+      });
+    } catch (e) {
+      // Silent failure; do not block UI
+      console.warn('Email notification failed', e);
+    }
   }
   /**
    * Send a message
@@ -81,7 +119,7 @@ export class MessageService {
 
         const created = await APIService.create('messages', supabaseMessageData);
         
-        return {
+        const result = {
           id: created.id,
           conversationId: created.conversation_id || (conversationId as string),
           senderId: created.sender_id || created.senderId,
@@ -91,7 +129,16 @@ export class MessageService {
           timestamp: created.created_at || created.timestamp || new Date().toISOString(),
           read: created.read || false,
           listingId: created.listing_id || created.listingId,
-        };
+        } as Message;
+
+        // Fire-and-forget email notification
+        this.notifyRecipientEmail({
+          recipientId: result.receiverId,
+          senderName: messageData.senderName,
+          messageText: result.content,
+        }).catch(() => {});
+
+        return result;
       } else {
         // Fallback to localStorage
         const message: Message = {
