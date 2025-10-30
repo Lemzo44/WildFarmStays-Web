@@ -6,7 +6,9 @@ import { MessageService } from '../services/MessageService';
 import { APIService } from '../services/APIService';
 import { useSupabase } from '../lib/supabase';
 
-export default function MessagesScreen() {
+interface MessagesScreenProps { initialConversationId?: string }
+
+export default function MessagesScreen({ initialConversationId }: MessagesScreenProps = {}) {
   const { currentUser } = useAuth();
   const { theme } = useTheme();
   const [conversations, setConversations] = useState([]);
@@ -97,7 +99,13 @@ export default function MessagesScreen() {
       );
       
       // Filter out nulls and set conversations
-      setConversations(formattedConversations.filter((c: any) => c !== null));
+      const list = formattedConversations.filter((c: any) => c !== null);
+      setConversations(list);
+      // Auto-select if an initial conversation id was provided
+      if (initialConversationId) {
+        const found = list.find((c: any) => c.id === initialConversationId);
+        if (found) setSelectedConversation(found);
+      }
     } catch (error) {
       console.error('Error loading conversations:', error);
     } finally {

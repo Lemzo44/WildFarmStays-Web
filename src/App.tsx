@@ -119,7 +119,7 @@ function AppContent() {
       case 'listings':
         return <ListingsScreen onNavigate={handleNavigate} />;
       case 'messages':
-        return <MessagesScreen />;
+        return <MessagesScreen initialConversationId={(screenData as any)?.conversationId} />;
       case 'profile':
         return <ProfileScreen onNavigate={handleNavigate} />;
       case 'booking':

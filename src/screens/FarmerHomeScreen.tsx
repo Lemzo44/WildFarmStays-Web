@@ -156,6 +156,8 @@ export default function FarmerHomeScreen({ onNavigate }: FarmerHomeScreenProps =
         const enriched = [] as any[];
         for (const m of top5) {
           const otherId = (m.sender_id || m.senderId) === currentUser?.id ? (m.receiver_id || m.receiverId) : (m.sender_id || m.senderId);
+          const pairKey = [String(m.sender_id || m.senderId), String(m.receiver_id || m.receiverId)].sort().join('-');
+          const conversationId = (typeof m.conversation_id === 'string' && m.conversation_id) ? m.conversation_id : pairKey;
           let otherName = 'User';
           try {
             const profile = useSupabaseBackend ? await APIService.getById<any>('profiles', otherId) : await LocalStorageService.getById('users', otherId);
@@ -165,6 +167,7 @@ export default function FarmerHomeScreen({ onNavigate }: FarmerHomeScreenProps =
           } catch {}
           enriched.push({
             id: m.id,
+            conversationId,
             senderName: otherName,
             lastMessage: m.message_text || m.content || '',
             timestamp: new Date(m.created_at || m.timestamp || '').toLocaleString(),
@@ -346,7 +349,7 @@ export default function FarmerHomeScreen({ onNavigate }: FarmerHomeScreenProps =
         <Text style={styles.cardTitle}>Recent Messages</Text>
         {recentMessages.length > 0 ? (
           recentMessages.map((message: any) => (
-            <View key={message.id} style={styles.messageItem}>
+            <TouchableOpacity key={message.id} style={styles.messageItem} onPress={() => onNavigate?.('messages', { conversationId: message.conversationId })}>
               <View style={styles.messageIcon}>
                 <Text style={styles.messageIconText}>💬</Text>
               </View>
@@ -356,7 +359,7 @@ export default function FarmerHomeScreen({ onNavigate }: FarmerHomeScreenProps =
                 <Text style={styles.messageTime}>{message.timestamp}</Text>
               </View>
               {message.unread && <View style={styles.unreadDot} />}
-            </View>
+            </TouchableOpacity>
           ))
         ) : (
           <Text style={styles.emptyText}>No recent messages</Text>

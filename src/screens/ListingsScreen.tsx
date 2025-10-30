@@ -155,10 +155,15 @@ export default function ListingsScreen({ onNavigate }: ListingsScreenProps = {})
     try {
       const result = await FavoritesService.toggleFavorite(currentUser.id, listing);
       if (result.success) {
+        // Set explicit state based on operation result to avoid display desync
         setFavoriteStatus((prev: any) => ({
           ...prev,
-          [listing.id]: !prev[listing.id]
+          [listing.id]: !!result.favorite // true when added, false when removed
         }));
+        // Safety: re-check server state in background and reconcile
+        FavoritesService.isFavorite(currentUser.id, listing.id)
+          .then((isFav) => setFavoriteStatus((prev: any) => ({ ...prev, [listing.id]: isFav })))
+          .catch(() => {});
       }
     } catch (error) {
       console.error('Error toggling favorite:', error);
