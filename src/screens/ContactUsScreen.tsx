@@ -48,12 +48,17 @@ export default function ContactUsScreen({ onNavigate }: ContactUsScreenProps) {
     subject: '',
     message: ''
   });
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async () => {
     if (!formData.name || !formData.email || !formData.message) {
       Alert.alert('Error', 'Please fill in all required fields');
       return;
     }
+
+    setIsSubmitting(true);
+    setShowSuccess(false);
 
     try {
       if (useSupabase) {
@@ -70,7 +75,8 @@ export default function ContactUsScreen({ onNavigate }: ContactUsScreenProps) {
         console.log('Creating support ticket with data:', ticketData);
         console.log('Current user ID:', currentUser?.id);
         
-        await APIService.create('support_tickets', ticketData);
+        const result = await APIService.create('support_tickets', ticketData);
+        console.log('Support ticket created successfully:', result);
       } else {
         // Create support ticket in localStorage
         const ticket = {
@@ -89,16 +95,26 @@ export default function ContactUsScreen({ onNavigate }: ContactUsScreenProps) {
         await LocalStorageService.save('tickets', ticket);
       }
       
+      // Show success message and clear form
+      setShowSuccess(true);
+      setFormData({ name: '', email: '', subject: '', message: '' });
+      
+      // Hide success message after 5 seconds
+      setTimeout(() => {
+        setShowSuccess(false);
+      }, 5000);
+      
+      // Also show Alert as backup
       Alert.alert(
         'Message Sent!',
         'Thank you for contacting us. We will get back to you as soon as possible.',
-        [{ text: 'OK', onPress: () => {
-          setFormData({ name: '', email: '', subject: '', message: '' });
-        }}]
+        [{ text: 'OK' }]
       );
     } catch (error) {
       console.error('Error creating ticket:', error);
       Alert.alert('Error', 'Failed to send message. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -118,6 +134,12 @@ export default function ContactUsScreen({ onNavigate }: ContactUsScreenProps) {
       </View>
 
       <View style={styles.content}>
+        {showSuccess && (
+          <View style={styles.successBanner}>
+            <Text style={styles.successBannerText}>✓ Message sent successfully! We'll get back to you soon.</Text>
+          </View>
+        )}
+        
         <Text style={styles.description}>
           Have questions or feedback? Send us a message and we'll get back to you within 24 hours.
         </Text>
@@ -159,8 +181,14 @@ export default function ContactUsScreen({ onNavigate }: ContactUsScreenProps) {
             numberOfLines={6}
           />
 
-          <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-            <Text style={styles.submitButtonText}>Send Message</Text>
+          <TouchableOpacity 
+            style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]} 
+            onPress={handleSubmit}
+            disabled={isSubmitting}
+          >
+            <Text style={styles.submitButtonText}>
+              {isSubmitting ? 'Sending...' : 'Send Message'}
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -306,10 +334,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 24,
   },
+  submitButtonDisabled: {
+    backgroundColor: '#9E9E9E',
+    opacity: 0.6,
+  },
   submitButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  successBanner: {
+    backgroundColor: '#4CAF50',
+    padding: 16,
+    borderRadius: 8,
+    marginBottom: 24,
+    alignItems: 'center',
+  },
+  successBannerText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
   infoSection: {
     backgroundColor: '#FFFFFF',

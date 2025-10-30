@@ -70,14 +70,60 @@ export default function TicketDetails({ ticket, onNavigate }: TicketDetailsProps
     }
   };
 
-  const handleSendResponse = () => {
+  const handleSendResponse = async () => {
     if (!responseText.trim()) {
       Alert.alert('Error', 'Please enter a response');
       return;
     }
 
-    Alert.alert('Success', 'Response sent to user');
-    setResponseText('');
+    if (!ticketData) {
+      Alert.alert('Error', 'Ticket data not available');
+      return;
+    }
+
+    try {
+      if (useSupabase) {
+        // Append the response to admin_notes (we can enhance this later with a separate field)
+        const currentNotes = ticketData.admin_notes || '';
+        const timestamp = new Date().toLocaleString();
+        const newResponse = currentNotes 
+          ? `\n\n--- Admin Response (${timestamp}) ---\n${responseText}`
+          : `Admin Response (${timestamp}):\n${responseText}`;
+        
+        const updatedNotes = currentNotes + newResponse;
+        
+        await APIService.update('support_tickets', ticketData.id, { 
+          admin_notes: updatedNotes,
+          status: ticketData.status === 'open' ? 'in_progress' : ticketData.status // Auto-update status if open
+        });
+        
+        // Reload ticket data
+        const updated = await APIService.getById('support_tickets', ticketData.id);
+        setTicketData({
+          ...updated,
+          userName: updated.name || updated.userName,
+          userEmail: updated.email || updated.userEmail,
+          userId: updated.user_id || updated.userId,
+          createdAt: updated.created_at || updated.createdAt,
+        });
+        
+        Alert.alert('Success', 'Response saved successfully');
+        setResponseText('');
+      } else {
+        // Fallback to localStorage
+        const updatedTicket = {
+          ...ticketData,
+          admin_notes: (ticketData.admin_notes || '') + `\n\nAdmin Response: ${responseText}`,
+        };
+        await LocalStorageService.save('tickets', updatedTicket);
+        setTicketData(updatedTicket);
+        Alert.alert('Success', 'Response saved successfully');
+        setResponseText('');
+      }
+    } catch (error) {
+      console.error('Error saving response:', error);
+      Alert.alert('Error', 'Failed to save response. Please try again.');
+    }
   };
 
   if (!ticketData) {
@@ -186,6 +232,16 @@ export default function TicketDetails({ ticket, onNavigate }: TicketDetailsProps
           <Text style={styles.messageText}>{ticketData.message}</Text>
         </View>
       </View>
+
+      {/* Admin Notes/Responses (if any) */}
+      {ticketData.admin_notes && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Admin Responses & Notes</Text>
+          <View style={styles.adminNotesCard}>
+            <Text style={styles.adminNotesText}>{ticketData.admin_notes}</Text>
+          </View>
+        </View>
+      )}
 
       {/* Admin Response */}
       <View style={styles.section}>
@@ -303,6 +359,18 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   messageText: {
+    fontSize: 14,
+    color: '#333',
+    lineHeight: 22,
+  },
+  adminNotesCard: {
+    backgroundColor: '#E3F2FD',
+    padding: 16,
+    borderRadius: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#2196F3',
+  },
+  adminNotesText: {
     fontSize: 14,
     color: '#333',
     lineHeight: 22,
