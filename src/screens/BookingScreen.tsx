@@ -8,6 +8,7 @@ import { FavoritesService } from '../services/FavoritesService';
 import { ReviewService } from '../services/ReviewService';
 import { detectWaiverType, WaiverType, getWaiverText } from '../utils/Waiver';
 import { MessageService } from '../services/MessageService';
+import { useSupabase } from '../lib/supabase';
 
 interface BookingFormState {
   checkInDate?: string; // ISO date yyyy-mm-dd
