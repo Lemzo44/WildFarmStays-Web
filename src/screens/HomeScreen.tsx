@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { LocalStorageService } from '../services/LocalStorageService';
 import { BookingService } from '../services/BookingService';
 import { ReviewService } from '../services/ReviewService';
+import { FavoritesService } from '../services/FavoritesService';
 import { useSupabase } from '../lib/supabase';
 import FarmerHomeScreen from './FarmerHomeScreen';
 
@@ -54,28 +55,24 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps = {}) {
         );
       }
 
-      const mockFavorites = [
-        {
-          id: '1',
-          farmName: 'Green Valley Farm',
-          location: 'Yorkshire, UK',
-          price: 25,
-          rating: 4.8
-        },
-        {
-          id: '2',
-          farmName: 'Sunset Meadows',
-          location: 'Devon, UK',
-          price: 30,
-          rating: 4.9
-        }
-      ];
-
       // Filter based on user role
       if (currentUser?.role === 'camper') {
         setUpcomingStays(userBookings.filter((b: any) => b.status === 'upcoming' || b.status === 'confirmed' || b.status === 'pending'));
         setRecentStays(userBookings.filter((b: any) => b.status === 'completed'));
-        setFavoriteFarms(mockFavorites);
+        try {
+          // Load favorites from backend (or service fallback)
+          const favListings = await FavoritesService.getFavoriteListingsWithDetails(currentUser.id);
+          const favDisplay = (favListings || []).map((l: any) => ({
+            id: l.id,
+            farmName: l.title || l.farmName || 'Farm',
+            location: l.location || '',
+            price: l.price || l.price_per_night || 0,
+            rating: l.rating || 0,
+          }));
+          setFavoriteFarms(favDisplay);
+        } catch (e) {
+          setFavoriteFarms([]);
+        }
       }
     } catch (error) {
       console.error('Error loading home data:', error);
