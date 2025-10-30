@@ -14,6 +14,7 @@ export default function FarmerHomeScreen({ onNavigate }: FarmerHomeScreenProps =
   const [stats, setStats] = useState({
     totalListings: 0,
     activeListings: 0,
+    pendingListings: 0,
     totalBookings: 0,
     upcomingBookings: 0,
     totalEarnings: 0,
@@ -105,26 +106,23 @@ export default function FarmerHomeScreen({ onNavigate }: FarmerHomeScreenProps =
         averageRating: 0, // TODO: Load actual average rating
       };
 
-      const mockRecentBookings = [
-        {
-          id: '1',
-          camperName: 'John Smith',
-          listingTitle: 'Green Valley Farm',
-          startDate: '2024-11-20',
-          endDate: '2024-11-22',
-          status: 'confirmed',
-          totalPrice: 50.00,
-        },
-        {
-          id: '2',
-          camperName: 'Sarah Johnson',
-          listingTitle: 'Sunset Meadows',
-          startDate: '2024-11-25',
-          endDate: '2024-11-27',
-          status: 'pending',
-          totalPrice: 60.00,
-        },
-      ];
+      // Build recent bookings from real data
+      const recentFromData = [...farmerBookings]
+        .sort((a: any, b: any) => {
+          const ad = new Date(a.created_at || a.createdAt || a.endDate || a.end_date || 0).getTime();
+          const bd = new Date(b.created_at || b.createdAt || b.endDate || b.end_date || 0).getTime();
+          return bd - ad;
+        })
+        .slice(0, 5)
+        .map((b: any) => ({
+          id: b.id,
+          camperName: b.camper_name || b.camperName || 'Camper',
+          listingTitle: b.listing_title || b.listingTitle || 'Farm Stay',
+          startDate: b.start_date || b.startDate,
+          endDate: b.end_date || b.endDate,
+          status: b.status,
+          totalPrice: Number(b.total_price ?? b.totalPrice ?? 0),
+        }));
 
       const mockRecentMessages = [
         {
@@ -144,7 +142,7 @@ export default function FarmerHomeScreen({ onNavigate }: FarmerHomeScreenProps =
       ];
 
       setStats(mockStats);
-      setRecentBookings(mockRecentBookings);
+      setRecentBookings(recentFromData);
       setRecentMessages(mockRecentMessages);
     } catch (error) {
       console.error('Error loading farmer data:', error);
