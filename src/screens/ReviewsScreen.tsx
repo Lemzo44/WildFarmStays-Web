@@ -42,26 +42,22 @@ export default function ReviewsScreen({ listingId, onNavigate }: ReviewsScreenPr
       setReviews(listingReviews);
       setReviewStats(stats);
       
-      // Prefill names from service (server-side join) and backfill only missing via profiles
+      // Always resolve names from profiles when Supabase is enabled to avoid stale Anonymous
       const names: any = {};
       const useSupabaseBackend = useSupabase;
       
       for (const review of listingReviews) {
         try {
-          if (review.reviewerName && review.reviewerName !== 'Anonymous') {
-            names[review.id] = review.reviewerName;
-            continue;
-          }
-
           if (useSupabaseBackend) {
             // Fetch from Supabase profiles
-            const reviewer = await APIService.getById('profiles', review.reviewerId);
+            const reviewer = review.reviewerId ? await APIService.getById('profiles', review.reviewerId) : null;
             if (reviewer) {
               const firstName = reviewer.first_name || reviewer.firstName || '';
               const lastName = reviewer.last_name || reviewer.lastName || '';
               names[review.id] = `${firstName} ${lastName}`.trim() || 'Anonymous';
             } else {
-              names[review.id] = 'Anonymous';
+              // Fallback to server-provided name
+              names[review.id] = review.reviewerName || 'Anonymous';
             }
           } else {
             // Fallback to localStorage
