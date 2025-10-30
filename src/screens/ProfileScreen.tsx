@@ -3,14 +3,21 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch } from 're
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { FarmerRatingService } from '../services/FarmerRatingService';
+import { supabase } from '../lib/supabase';
 
-export default function ProfileScreen() {
+interface ProfileScreenProps {
+  onNavigate?: (screen: string, data?: any) => void;
+}
+
+const ProfileScreen: React.FC<ProfileScreenProps> = ({ onNavigate }) => {
   const { currentUser, logout } = useAuth();
   const { theme, isDark, toggleTheme } = useTheme();
   const [ratingStats, setRatingStats] = useState({
     totalRatings: 0,
     averageRating: 0,
   });
+  const [showRatings, setShowRatings] = useState(false);
+  const [ratings, setRatings] = useState<any[]>([]);
 
   useEffect(() => {
     loadRatingStats();
@@ -23,6 +30,18 @@ export default function ProfileScreen() {
         setRatingStats(stats);
       } catch (error) {
         console.error('Error loading rating stats:', error);
+      }
+    }
+  };
+
+  const loadRatings = async () => {
+    if (currentUser?.role === 'camper' && currentUser) {
+      try {
+        const rows = await FarmerRatingService.getCamperFarmerRatings(currentUser.id);
+        setRatings(rows);
+      } catch (error) {
+        console.error('Error loading ratings:', error);
+        setRatings([]);
       }
     }
   };
@@ -55,6 +74,20 @@ export default function ProfileScreen() {
 
   const handleVerification = () => {
     console.log('Start verification');
+  };
+
+  const handleChangePassword = async () => {
+    if (!currentUser?.email) return;
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(currentUser.email, {
+        redirectTo: typeof window !== 'undefined' ? window.location.origin + '/login' : undefined,
+      });
+      if (error) throw error;
+      alert('Password reset email sent. Please check your inbox.');
+    } catch (e) {
+      console.error('Error sending password reset email:', e);
+      alert('Failed to send password reset email.');
+    }
   };
 
   return (
@@ -195,9 +228,36 @@ export default function ProfileScreen() {
           <Text style={styles.ratingsDescription}>
             See what farmers are saying about your stays
           </Text>
-          <TouchableOpacity style={styles.actionButton}>
+          <TouchableOpacity 
+            style={styles.actionButton}
+            onPress={async () => {
+              if (!showRatings) {
+                await loadRatings();
+              }
+              setShowRatings(!showRatings);
+            }}
+          >
             <Text style={styles.actionButtonText}>⭐ View Your Ratings</Text>
           </TouchableOpacity>
+
+          {showRatings && ratings.length > 0 && (
+            <View style={{ marginTop: 12 }}>
+              {ratings.map((r: any) => (
+                <View key={r.id} style={{ paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#E0E0E0' }}>
+                  <Text style={{ fontWeight: '600', color: '#333' }}>Rating: {r.rating} / 5</Text>
+                  {r.comment ? (
+                    <Text style={{ color: '#555', marginTop: 4 }}>{r.comment}</Text>
+                  ) : null}
+                  <Text style={{ color: '#999', fontSize: 12, marginTop: 4 }}>
+                    {new Date(r.createdAt || r.created_at || '').toLocaleDateString('en-GB', { year: 'numeric', month: 'short', day: 'numeric' })}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
+          {showRatings && ratings.length === 0 && (
+            <Text style={{ marginTop: 12, color: '#666' }}>No ratings yet.</Text>
+          )}
         </View>
       )}
 
@@ -208,11 +268,11 @@ export default function ProfileScreen() {
           <Text style={styles.actionButtonText}>✏️ Edit Profile</Text>
         </TouchableOpacity>
         
-        <TouchableOpacity style={styles.actionButton}>
+        <TouchableOpacity style={styles.actionButton} onPress={handleChangePassword}>
           <Text style={styles.actionButtonText}>🔒 Change Password</Text>
         </TouchableOpacity>
         
-        <TouchableOpacity style={styles.actionButton}>
+        <TouchableOpacity style={styles.actionButton} onPress={() => onNavigate?.('contact')}>
           <Text style={styles.actionButtonText}>❓ Help & Support</Text>
         </TouchableOpacity>
       </View>
@@ -226,7 +286,9 @@ export default function ProfileScreen() {
       </View>
     </ScrollView>
   );
-}
+};
+
+export default ProfileScreen;
 
 const styles = StyleSheet.create({
   container: {

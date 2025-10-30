@@ -120,7 +120,7 @@ function AppContent() {
       case 'messages':
         return <MessagesScreen />;
       case 'profile':
-        return <ProfileScreen />;
+        return <ProfileScreen onNavigate={handleNavigate} />;
       case 'booking':
         return (
           <BookingScreen
