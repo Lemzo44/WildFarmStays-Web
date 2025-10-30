@@ -120,14 +120,24 @@ export class ReviewService {
           }
         }
 
-        // Normalize to Review interface including reviewer names
-        return (reviews || []).map((review: any) => {
+        // Normalize to Review interface including reviewer names; fallback to per-row fetch if missing
+        const normalized: Review[] = [];
+        for (const review of (reviews || [])) {
           const rid = review.reviewer_id || review.reviewerId;
-          return {
+          let name = idToName[rid] || review.reviewer_name || review.reviewerName || '';
+          if (!name) {
+            try {
+              const prof = await APIService.getById<any>('profiles', rid);
+              const fn = prof?.first_name || prof?.firstName || '';
+              const ln = prof?.last_name || prof?.lastName || '';
+              name = `${fn} ${ln}`.trim();
+            } catch {}
+          }
+          normalized.push({
             id: review.id,
             listingId: review.listing_id || review.listingId,
             reviewerId: rid,
-            reviewerName: idToName[rid] || review.reviewer_name || review.reviewerName || 'Anonymous',
+            reviewerName: name || 'Anonymous',
             rating: review.rating,
             comment: review.comment || '',
             title: review.title || undefined,
@@ -135,8 +145,9 @@ export class ReviewService {
             bookingId: review.booking_id || review.bookingId,
             createdAt: review.created_at || review.createdAt || '',
             updatedAt: review.updated_at || review.updatedAt || '',
-          } as Review;
-        });
+          });
+        }
+        return normalized;
       } else {
         const allReviews = await LocalStorageService.getAll('reviews');
         return allReviews.filter((review: Review) => review.listingId === listingId);
