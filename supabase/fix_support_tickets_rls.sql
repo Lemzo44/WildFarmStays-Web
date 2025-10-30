@@ -2,12 +2,12 @@
 ALTER TABLE public.support_tickets ENABLE ROW LEVEL SECURITY;
 
 -- Allow authenticated users to create support tickets (for Contact Us form)
+-- This allows any authenticated user to create tickets, and optionally set user_id
 DROP POLICY IF EXISTS "Users can create support tickets" ON public.support_tickets;
 CREATE POLICY "Users can create support tickets"
   ON public.support_tickets FOR INSERT
   WITH CHECK (
     auth.uid() IS NOT NULL
-    AND (user_id IS NULL OR user_id::text = auth.uid()::text)
   );
 
 -- Allow users to view their own tickets
