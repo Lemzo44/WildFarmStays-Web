@@ -345,8 +345,21 @@ export class MessageService {
         };
       }
 
-      // Create new conversation by sending an initial message (optional - can be skipped)
-      // For now, just return the conversation ID
+      // Create new conversation by sending an initial seed message so it appears in lists
+      try {
+        await this.sendMessage({
+          conversationId,
+          senderId: userId1,
+          senderName: 'User',
+          receiverId: userId2,
+          content: 'Conversation started',
+          listingId,
+        } as any);
+      } catch (e) {
+        // If seed message fails, still return conversation info
+        console.warn('Seed message failed, returning conversation anyway');
+      }
+
       return { 
         success: true, 
         conversation: { 
