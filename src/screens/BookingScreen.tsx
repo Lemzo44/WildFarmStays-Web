@@ -144,11 +144,18 @@ export default function BookingScreen({ listing, form, onNavigate }: BookingScre
       const names: any = {};
       for (const review of listingReviews.slice(0, 3)) {
         try {
-          const reviewer = await LocalStorageService.getById('users', review.reviewerId);
-          if (reviewer) {
-            names[review.id] = `${reviewer.firstName} ${reviewer.lastName}`;
+          if (useSupabase) {
+            const reviewer = await APIService.getById('profiles', review.reviewerId);
+            if (reviewer) {
+              const first = (reviewer as any).first_name || (reviewer as any).firstName || '';
+              const last = (reviewer as any).last_name || (reviewer as any).lastName || '';
+              names[review.id] = `${first} ${last}`.trim() || 'Anonymous';
+            } else {
+              names[review.id] = 'Anonymous';
+            }
           } else {
-            names[review.id] = 'Anonymous';
+            const reviewer = await LocalStorageService.getById('users', review.reviewerId);
+            names[review.id] = reviewer ? `${reviewer.firstName} ${reviewer.lastName}` : 'Anonymous';
           }
         } catch (error) {
           names[review.id] = 'Anonymous';
