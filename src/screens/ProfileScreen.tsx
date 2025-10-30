@@ -11,7 +11,7 @@ interface ProfileScreenProps {
 }
 
 const ProfileScreen: React.FC<ProfileScreenProps> = ({ onNavigate }) => {
-  const { currentUser, logout } = useAuth();
+  const { currentUser, logout, refreshProfile } = useAuth();
   const { theme, isDark, toggleTheme } = useTheme();
   const [ratingStats, setRatingStats] = useState({
     totalRatings: 0,
@@ -354,6 +354,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onNavigate }) => {
                     payload.postcode = postcode.trim() || null;
                   }
                   await APIService.update('profiles', currentUser.id, payload);
+                  await refreshProfile();
                   alert('Profile updated successfully.');
                   setEditMode(false);
                 } catch (e) {

@@ -26,6 +26,7 @@ interface AuthContextType {
   isAdmin: () => boolean;
   isCamper: () => boolean;
   isFarmer: () => boolean;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -334,6 +335,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return currentUser?.role === 'farmer';
   };
 
+  const refreshProfile = async (): Promise<void> => {
+    try {
+      if (!useSupabase || !supabase) return;
+      const { data } = await supabase.auth.getUser();
+      if (data?.user) {
+        await loadUserFromSupabase(data.user);
+      }
+    } catch (e) {
+      console.error('Error refreshing profile:', e);
+    }
+  };
+
   const value = {
     currentUser,
     login,
@@ -342,6 +355,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isAdmin,
     isCamper,
     isFarmer,
+    refreshProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
