@@ -7,7 +7,7 @@ import { useSupabase } from '../lib/supabase';
 import FarmerHomeScreen from './FarmerHomeScreen';
 
 interface HomeScreenProps {
-  onNavigate?: (screen: string) => void;
+  onNavigate?: (screen: string, data?: any) => void;
 }
 
 export default function HomeScreen({ onNavigate }: HomeScreenProps = {}) {
@@ -164,7 +164,17 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps = {}) {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Recent Stays</Text>
           {recentStays.map((stay: any) => (
-            <View key={stay.id} style={styles.stayItem}>
+            <TouchableOpacity
+              key={stay.id}
+              style={styles.stayItem}
+              onPress={() => onNavigate?.('review', {
+                booking: stay,
+                listing: {
+                  id: stay.listingId || stay.listing_id,
+                  title: stay.listingTitle || stay.title || 'Farm Stay',
+                },
+              })}
+            >
               <View style={styles.stayIcon}>
                 <Text style={styles.stayIconText}>🏠</Text>
               </View>
@@ -180,7 +190,10 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps = {}) {
                   <Text style={styles.priceText}>£{(stay.totalPrice || stay.price || 0).toFixed(2)}</Text>
                 </View>
               </View>
-            </View>
+              <View style={styles.arrowIcon}>
+                <Text style={styles.arrowText}>Write Review →</Text>
+              </View>
+            </TouchableOpacity>
           ))}
         </View>
       )}

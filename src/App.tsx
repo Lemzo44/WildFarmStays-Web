@@ -130,7 +130,13 @@ function AppContent() {
           />
         );
       case 'review':
-        return <ReviewScreen />;
+        return (
+          <ReviewScreen
+            listing={(screenData as any)?.listing}
+            booking={(screenData as any)?.booking}
+            onNavigate={handleNavigate}
+          />
+        );
       case 'reviews':
         return <ReviewsScreen />;
       case 'create-listing':
