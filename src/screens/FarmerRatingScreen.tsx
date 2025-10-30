@@ -46,6 +46,10 @@ export default function FarmerRatingScreen({ bookingId, onNavigate }: FarmerRati
         farmerId: booking.farmer_id || booking.farmerId,
         camperId: booking.camper_id || booking.camperId,
         listingId: booking.listing_id || booking.listingId,
+        startDate: booking.start_date || booking.startDate,
+        endDate: booking.end_date || booking.endDate,
+        camperName: booking.camper_name || booking.camperName,
+        listingTitle: booking.listing_title || booking.listingTitle,
       }));
       
       // Get farmer's listings
@@ -81,26 +85,44 @@ export default function FarmerRatingScreen({ bookingId, onNavigate }: FarmerRati
           booking.camperId || booking.camper_id
         );
         if (!hasRated) {
-          // Load camper name
-          let camper: any = null;
-          let listing: any = null;
-          
-          if (useSupabaseBackend) {
-            camper = await APIService.getById('profiles', booking.camperId || booking.camper_id);
-            listing = await APIService.getById('listings', booking.listingId || booking.listing_id);
-          } else {
-            camper = await LocalStorageService.getById('users', booking.camperId);
-            listing = await LocalStorageService.getById('listings', booking.listingId);
+          // Resolve camper name and listing title with fallbacks to booking snapshot fields
+          let camperNameStr = booking.camperName || '';
+          let listingTitleStr = booking.listingTitle || '';
+
+          if ((!camperNameStr || !listingTitleStr)) {
+            try {
+              if (useSupabaseBackend) {
+                if (!camperNameStr) {
+                  const camper = await APIService.getById<any>('profiles', booking.camperId || booking.camper_id);
+                  const firstName = camper?.first_name || camper?.firstName || '';
+                  const lastName = camper?.last_name || camper?.lastName || '';
+                  camperNameStr = `${firstName} ${lastName}`.trim();
+                }
+                if (!listingTitleStr) {
+                  const listing = await APIService.getById<any>('listings', booking.listingId || booking.listing_id);
+                  listingTitleStr = listing?.title || '';
+                }
+              } else {
+                if (!camperNameStr) {
+                  const camper = await LocalStorageService.getById('users', booking.camperId);
+                  const firstName = camper?.firstName || '';
+                  const lastName = camper?.lastName || '';
+                  camperNameStr = `${firstName} ${lastName}`.trim();
+                }
+                if (!listingTitleStr) {
+                  const listing = await LocalStorageService.getById('listings', booking.listingId);
+                  listingTitleStr = listing?.title || '';
+                }
+              }
+            } catch {
+              // ignore, we'll fall back
+            }
           }
-          
-          const firstName = camper?.first_name || camper?.firstName || '';
-          const lastName = camper?.last_name || camper?.lastName || '';
-          const camperNameStr = `${firstName} ${lastName}`.trim() || 'Unknown';
-          
+
           bookingsToRate.push({
             ...booking,
-            camperName: camperNameStr,
-            listingTitle: listing?.title || 'Unknown Listing',
+            camperName: camperNameStr || 'Unknown',
+            listingTitle: listingTitleStr || 'Unknown Listing',
           });
         }
       }
@@ -220,7 +242,7 @@ export default function FarmerRatingScreen({ bookingId, onNavigate }: FarmerRati
           <Text style={styles.bookingTitle}>{item.listingTitle}</Text>
           <Text style={styles.camperName}>Camper: {item.camperName}</Text>
           <Text style={styles.bookingDate}>
-            {formatDate(item.startDate)} - {formatDate(item.endDate)}
+            {item.startDate ? formatDate(item.startDate) : '—'} - {item.endDate ? formatDate(item.endDate) : '—'}
           </Text>
         </View>
         <View style={styles.bookingStatus}>
