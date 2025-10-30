@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
 import { APIService } from '../services/APIService';
 import { LocalStorageService } from '../services/LocalStorageService';
 import { useSupabase } from '../lib/supabase';
@@ -11,6 +11,8 @@ interface MyTicketDetailsScreenProps {
 
 export default function MyTicketDetailsScreen({ ticket, onNavigate }: MyTicketDetailsScreenProps) {
   const [ticketData, setTicketData] = useState(ticket);
+  const [replyText, setReplyText] = useState('');
+  const [isSendingReply, setIsSendingReply] = useState(false);
 
   useEffect(() => {
     if (ticket?.id && !ticketData?.message) {
@@ -71,6 +73,69 @@ export default function MyTicketDetailsScreen({ ticket, onNavigate }: MyTicketDe
     ).join(' ');
   };
 
+  const handleSendReply = async () => {
+    if (!replyText.trim()) {
+      Alert.alert('Error', 'Please enter a reply message');
+      return;
+    }
+
+    if (!ticketData) {
+      Alert.alert('Error', 'Ticket data not available');
+      return;
+    }
+
+    setIsSendingReply(true);
+
+    try {
+      if (useSupabase) {
+        // Append the user reply to admin_notes
+        const currentNotes = ticketData.admin_notes || '';
+        const timestamp = new Date().toLocaleString();
+        const newReply = currentNotes 
+          ? `\n\n--- User Reply (${timestamp}) ---\n${replyText}`
+          : `--- User Reply (${timestamp}) ---\n${replyText}`;
+        
+        const updatedNotes = currentNotes + newReply;
+        
+        await APIService.update('support_tickets', ticketData.id, { 
+          admin_notes: updatedNotes,
+          status: ticketData.status === 'resolved' || ticketData.status === 'closed' 
+            ? 'in_progress' 
+            : ticketData.status // Reopen if closed/resolved
+        });
+        
+        // Reload ticket data
+        const updated = await APIService.getById('support_tickets', ticketData.id);
+        setTicketData({
+          ...updated,
+          userName: updated.name || updated.userName,
+          userEmail: updated.email || updated.userEmail,
+          userId: updated.user_id || updated.userId,
+          createdAt: updated.created_at || updated.createdAt,
+          updatedAt: updated.updated_at || updated.updatedAt,
+        });
+        
+        Alert.alert('Success', 'Your reply has been sent');
+        setReplyText('');
+      } else {
+        // Fallback to localStorage
+        const updatedTicket = {
+          ...ticketData,
+          admin_notes: (ticketData.admin_notes || '') + `\n\nUser Reply: ${replyText}`,
+        };
+        await LocalStorageService.save('tickets', updatedTicket);
+        setTicketData(updatedTicket);
+        Alert.alert('Success', 'Your reply has been sent');
+        setReplyText('');
+      }
+    } catch (error) {
+      console.error('Error sending reply:', error);
+      Alert.alert('Error', 'Failed to send reply. Please try again.');
+    } finally {
+      setIsSendingReply(false);
+    }
+  };
+
   if (!ticketData) {
     return (
       <View style={styles.container}>
@@ -79,10 +144,37 @@ export default function MyTicketDetailsScreen({ ticket, onNavigate }: MyTicketDe
     );
   }
 
-  // Parse admin responses from admin_notes
-  const adminResponses = ticketData.admin_notes 
-    ? ticketData.admin_notes.split('--- Admin Response').filter((part: string) => part.trim().length > 0)
-    : [];
+  // Parse conversation from admin_notes - both admin responses and user replies
+  const parseConversation = () => {
+    if (!ticketData.admin_notes) return [];
+    
+    const conversation: Array<{ type: 'admin' | 'user'; timestamp: string | null; text: string }> = [];
+    
+    // Split by both "--- Admin Response" and "--- User Reply"
+    const parts = ticketData.admin_notes.split(/--- (Admin Response|User Reply)/);
+    
+    for (let i = 1; i < parts.length; i += 2) {
+      if (i + 1 < parts.length) {
+        const typeLabel = parts[i].trim(); // "Admin Response" or "User Reply"
+        const content = parts[i + 1].trim();
+        
+        if (content) {
+          const timestampMatch = content.match(/\(([^)]+)\)/);
+          const timestamp = timestampMatch ? timestampMatch[1] : null;
+          const text = content.replace(/^.*?\)/s, '').trim() || content.trim();
+          const type = typeLabel.includes('Admin Response') ? 'admin' : 'user';
+          
+          if (text) {
+            conversation.push({ type, timestamp, text });
+          }
+        }
+      }
+    }
+    
+    return conversation;
+  };
+
+  const conversation = parseConversation();
 
   return (
     <ScrollView style={styles.container}>
@@ -124,25 +216,29 @@ export default function MyTicketDetailsScreen({ ticket, onNavigate }: MyTicketDe
           </Text>
         </View>
 
-        {/* Admin Responses */}
-        {adminResponses.length > 0 ? (
+        {/* Conversation Thread */}
+        {conversation.length > 0 ? (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Admin Responses</Text>
-            {adminResponses.map((response: string, index: number) => {
-              // Extract timestamp if present
-              const timestampMatch = response.match(/\(([^)]+)\)/);
-              const timestamp = timestampMatch ? timestampMatch[1] : null;
-              const responseText = response.replace(/^.*?\)/s, '').trim();
-              
-              return (
-                <View key={index} style={styles.responseCard}>
-                  {timestamp && (
-                    <Text style={styles.responseTimestamp}>{timestamp}</Text>
+            <Text style={styles.sectionTitle}>Conversation</Text>
+            {conversation.map((item, index) => (
+              <View 
+                key={index} 
+                style={[
+                  styles.responseCard, 
+                  item.type === 'user' && styles.userReplyCard
+                ]}
+              >
+                <View style={styles.responseHeader}>
+                  <Text style={styles.responseLabel}>
+                    {item.type === 'admin' ? '👤 Admin' : '✉️ You'}
+                  </Text>
+                  {item.timestamp && (
+                    <Text style={styles.responseTimestamp}>{item.timestamp}</Text>
                   )}
-                  <Text style={styles.responseText}>{responseText}</Text>
                 </View>
-              );
-            })}
+                <Text style={styles.responseText}>{item.text}</Text>
+              </View>
+            ))}
           </View>
         ) : (
           <View style={styles.section}>
@@ -152,6 +248,30 @@ export default function MyTicketDetailsScreen({ ticket, onNavigate }: MyTicketDe
                 No response yet. We'll get back to you soon!
               </Text>
             </View>
+          </View>
+        )}
+
+        {/* Reply Input - Only show if ticket is not closed */}
+        {ticketData.status !== 'closed' && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Reply to Admin</Text>
+            <TextInput
+              style={styles.replyInput}
+              placeholder="Type your reply here..."
+              value={replyText}
+              onChangeText={setReplyText}
+              multiline
+              numberOfLines={4}
+            />
+            <TouchableOpacity 
+              style={[styles.sendReplyButton, isSendingReply && styles.sendReplyButtonDisabled]}
+              onPress={handleSendReply}
+              disabled={isSendingReply}
+            >
+              <Text style={styles.sendReplyButtonText}>
+                {isSendingReply ? 'Sending...' : 'Send Reply'}
+              </Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -251,16 +371,57 @@ const styles = StyleSheet.create({
     borderLeftWidth: 4,
     borderLeftColor: '#2196F3',
   },
+  userReplyCard: {
+    backgroundColor: '#E8F5E8',
+    borderLeftColor: '#2E7D32',
+  },
+  responseHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  responseLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#333',
+  },
   responseTimestamp: {
     fontSize: 12,
     color: '#666',
-    marginBottom: 8,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   responseText: {
     fontSize: 14,
     color: '#333',
     lineHeight: 22,
+  },
+  replyInput: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    minHeight: 100,
+    textAlignVertical: 'top',
+    color: '#333',
+    marginBottom: 12,
+    fontSize: 14,
+  },
+  sendReplyButton: {
+    backgroundColor: '#2E7D32',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  sendReplyButtonDisabled: {
+    backgroundColor: '#9E9E9E',
+    opacity: 0.6,
+  },
+  sendReplyButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   noResponseCard: {
     backgroundColor: '#FFF9E6',
