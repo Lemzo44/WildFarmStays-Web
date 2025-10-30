@@ -150,7 +150,7 @@ export class MessageService {
         
         allMessages.forEach((message: Message) => {
           const otherUserId = message.senderId === userId ? message.receiverId : message.senderId;
-          const conversationId = (m as any).conversation_id || this.generateConversationId(userId, otherUserId);
+          const conversationId = (message as any).conversation_id || this.generateConversationId(userId, otherUserId);
           
           if (!conversationMap.has(conversationId)) {
             conversationMap.set(conversationId, []);
