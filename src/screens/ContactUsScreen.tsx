@@ -67,6 +67,9 @@ export default function ContactUsScreen({ onNavigate }: ContactUsScreenProps) {
           status: 'open',
         };
 
+        console.log('Creating support ticket with data:', ticketData);
+        console.log('Current user ID:', currentUser?.id);
+        
         await APIService.create('support_tickets', ticketData);
       } else {
         // Create support ticket in localStorage
