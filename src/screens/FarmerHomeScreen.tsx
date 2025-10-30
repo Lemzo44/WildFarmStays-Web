@@ -125,22 +125,36 @@ export default function FarmerHomeScreen({ onNavigate }: FarmerHomeScreenProps =
           raw: b,
         }));
 
-      const mockRecentMessages = [
-        {
-          id: '1',
-          senderName: 'John Smith',
-          lastMessage: 'Hi, I\'m interested in your farm...',
-          timestamp: '2 hours ago',
-          unread: true,
-        },
-        {
-          id: '2',
-          senderName: 'Sarah Johnson',
-          lastMessage: 'Thank you for the great stay!',
-          timestamp: '1 day ago',
-          unread: false,
-        },
-      ];
+      // Load recent messages for this farmer
+      let recentMsgs: any[] = [];
+      try {
+        const allMsgs = useSupabaseBackend
+          ? await APIService.get<any>('messages', { orderBy: { column: 'created_at', ascending: false } })
+          : await LocalStorageService.getAll('messages');
+        const msgsForFarmer = (allMsgs || []).filter((m: any) => (m.sender_id || m.senderId) === currentUser?.id || (m.receiver_id || m.receiverId) === currentUser?.id);
+        const top5 = msgsForFarmer.slice(0, 5);
+        const enriched = [] as any[];
+        for (const m of top5) {
+          const otherId = (m.sender_id || m.senderId) === currentUser?.id ? (m.receiver_id || m.receiverId) : (m.sender_id || m.senderId);
+          let otherName = 'User';
+          try {
+            const profile = useSupabaseBackend ? await APIService.getById<any>('profiles', otherId) : await LocalStorageService.getById('users', otherId);
+            const first = profile?.first_name || profile?.firstName || '';
+            const last = profile?.last_name || profile?.lastName || '';
+            otherName = `${first} ${last}`.trim() || otherName;
+          } catch {}
+          enriched.push({
+            id: m.id,
+            senderName: otherName,
+            lastMessage: m.message_text || m.content || '',
+            timestamp: new Date(m.created_at || m.timestamp || '').toLocaleString(),
+            unread: !!(m.receiver_id === currentUser?.id && !m.read),
+          });
+        }
+        recentMsgs = enriched;
+      } catch (e) {
+        recentMsgs = [];
+      }
 
       // Compute rating from real reviews for farmer's listings
       let avgRating = 0;
@@ -166,7 +180,7 @@ export default function FarmerHomeScreen({ onNavigate }: FarmerHomeScreenProps =
         averageRating: avgRating,
       });
       setRecentBookings(recentFromData);
-      setRecentMessages(mockRecentMessages);
+      setRecentMessages(recentMsgs);
     } catch (error) {
       console.error('Error loading farmer data:', error);
     } finally {
