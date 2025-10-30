@@ -47,10 +47,26 @@ export class MessageService {
   static async sendMessage(messageData: Omit<Message, 'id' | 'timestamp' | 'read'>): Promise<Message> {
     try {
       if (useSupabase) {
-        // Ensure we have a UUID conversation id for DB
+        // Ensure we have a stable UUID conversation id for DB
         let conversationId = messageData.conversationId;
         if (!this.isUuid(conversationId)) {
-          conversationId = this.generateUuid();
+          // Try to reuse existing UUID between these two users
+          try {
+            const existing = await APIService.get<any>('messages', { orderBy: { column: 'created_at', ascending: true } });
+            const match = (existing as any[]).find((m: any) => (
+              ((m.sender_id === messageData.senderId && m.receiver_id === messageData.receiverId) ||
+               (m.sender_id === messageData.receiverId && m.receiver_id === messageData.senderId)) &&
+              this.isUuid(m.conversation_id)
+            ));
+            if (match?.conversation_id) {
+              conversationId = match.conversation_id;
+            }
+          } catch {
+            // ignore
+          }
+          if (!this.isUuid(conversationId)) {
+            conversationId = this.generateUuid();
+          }
         }
         
         // Map to Supabase schema
@@ -150,7 +166,8 @@ export class MessageService {
         
         allMessages.forEach((message: Message) => {
           const otherUserId = message.senderId === userId ? message.receiverId : message.senderId;
-          const conversationId = (message as any).conversation_id || this.generateConversationId(userId, otherUserId);
+          const convIdFromRow = (message as any).conversation_id;
+          const conversationId = this.isUuid(convIdFromRow) ? convIdFromRow : this.generateConversationId(userId, otherUserId);
           
           if (!conversationMap.has(conversationId)) {
             conversationMap.set(conversationId, []);
@@ -171,8 +188,11 @@ export class MessageService {
             m.receiverId === userId && !m.read
           ).length;
 
+          // Prefer a UUID conv id if present in any message
+          const uuidInGroup = (messages as any[]).find((m: any) => this.isUuid(m.conversationId as any)) as any;
+          const finalConvId = uuidInGroup?.conversationId || conversationId;
           conversations.push({
-            id: conversationId,
+            id: finalConvId,
             participants: [userId, lastMessage.senderId === userId ? lastMessage.receiverId : lastMessage.senderId],
             lastMessage: lastMessage.content,
             lastMessageTime: lastMessage.timestamp,
