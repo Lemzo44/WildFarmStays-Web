@@ -29,13 +29,13 @@ export class MessageService {
   static async sendMessage(messageData: Omit<Message, 'id' | 'timestamp' | 'read'>): Promise<Message> {
     try {
       if (useSupabase) {
-        // Generate conversation_id from participants (consistent with existing logic)
+        // Generate an in-app conversation id (string), but do NOT write to DB column (UUID)
         const conversationId = messageData.conversationId || 
           [messageData.senderId, messageData.receiverId].sort().join('-');
         
         // Map to Supabase schema
         const supabaseMessageData = {
-          conversation_id: conversationId, // Store as string for now (schema expects UUID, but we use string format)
+          // conversation_id omitted since DB expects UUID; we infer threads via sender/receiver
           sender_id: messageData.senderId,
           receiver_id: messageData.receiverId,
           listing_id: messageData.listingId || null,
