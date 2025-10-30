@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, TextInput } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { FarmerRatingService } from '../services/FarmerRatingService';
@@ -206,7 +206,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onNavigate }) => {
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>Member Since</Text>
           <Text style={styles.infoValue}>
-            {currentUser?.joinDate ? new Date(currentUser.joinDate).toLocaleDateString() : 'Unknown'}
+            {currentUser?.joinDate ? new Date(currentUser.joinDate).toLocaleDateString() : '—'}
           </Text>
         </View>
         
@@ -217,14 +217,14 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onNavigate }) => {
           </Text>
         </View>
 
-        {currentUser?.role === 'camper' && (
+        {currentUser?.role === 'camper' && (currentUser?.subscriptionStatus || currentUser?.subscriptionRenewalDate) && (
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Subscription</Text>
             <Text style={[
               styles.infoValue, 
               currentUser?.subscriptionStatus === 'active' ? styles.activeText : styles.expiredText
             ]}>
-              {currentUser?.subscriptionStatus === 'active' ? '✅ Active' : '⚠️ Expired'}
+              {currentUser?.subscriptionStatus === 'active' ? '✅ Active' : (currentUser?.subscriptionStatus ? '⚠️ Expired' : '—')}
             </Text>
           </View>
         )}
@@ -252,22 +252,21 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onNavigate }) => {
         )}
       </View>
 
-      {currentUser?.role === 'camper' && (
+      {currentUser?.role === 'camper' && (currentUser?.subscriptionStatus || currentUser?.subscriptionRenewalDate) && (
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Subscription</Text>
           <View style={styles.subscriptionRow}>
             <Text style={styles.subscriptionLabel}>Annual Subscription</Text>
             <View style={[styles.statusChip, { backgroundColor: '#4CAF50' }]}>
-              <Text style={styles.statusText}>{currentUser?.subscriptionStatus}</Text>
+              <Text style={styles.statusText}>{currentUser?.subscriptionStatus || '—'}</Text>
             </View>
           </View>
           <View style={styles.subscriptionRow}>
             <Text style={styles.subscriptionLabel}>Renewal Date</Text>
             <Text style={styles.renewalDate}>
-              {new Date(currentUser?.subscriptionRenewalDate || '').toLocaleDateString('en-US', { 
-                month: 'long', 
-                year: 'numeric' 
-              })}
+              {currentUser?.subscriptionRenewalDate
+                ? new Date(currentUser.subscriptionRenewalDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+                : '—'}
             </Text>
           </View>
           <TouchableOpacity style={styles.actionButton} onPress={handleSubscription}>
