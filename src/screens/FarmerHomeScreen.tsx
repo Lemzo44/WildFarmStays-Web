@@ -132,7 +132,28 @@ export default function FarmerHomeScreen({ onNavigate }: FarmerHomeScreenProps =
           ? await APIService.get<any>('messages', { orderBy: { column: 'created_at', ascending: false } })
           : await LocalStorageService.getAll('messages');
         const msgsForFarmer = (allMsgs || []).filter((m: any) => (m.sender_id || m.senderId) === currentUser?.id || (m.receiver_id || m.receiverId) === currentUser?.id);
-        const top5 = msgsForFarmer.slice(0, 5);
+
+        // Group by conversation (prefer UUID conversation_id, fallback to sorted pair)
+        const convoMap = new Map<string, any[]>();
+        for (const m of msgsForFarmer) {
+          const a = String(m.sender_id || m.senderId);
+          const b = String(m.receiver_id || m.receiverId);
+          const pairId = [a, b].sort().join('-');
+          const convId = (m.conversation_id && typeof m.conversation_id === 'string') ? m.conversation_id : pairId;
+          if (!convoMap.has(convId)) convoMap.set(convId, []);
+          convoMap.get(convId)!.push(m);
+        }
+
+        // For each conversation, pick the latest message
+        const latestPerConvo = Array.from(convoMap.values()).map(group => {
+          return group.sort((x, y) => new Date(y.created_at || y.timestamp || 0).getTime() - new Date(x.created_at || x.timestamp || 0).getTime())[0];
+        });
+
+        // Sort the latest messages by time desc and take top 5
+        const top5 = latestPerConvo
+          .sort((x, y) => new Date(y.created_at || y.timestamp || 0).getTime() - new Date(x.created_at || x.timestamp || 0).getTime())
+          .slice(0, 5);
+
         const enriched = [] as any[];
         for (const m of top5) {
           const otherId = (m.sender_id || m.senderId) === currentUser?.id ? (m.receiver_id || m.receiverId) : (m.sender_id || m.senderId);
@@ -344,7 +365,7 @@ export default function FarmerHomeScreen({ onNavigate }: FarmerHomeScreenProps =
       </View>
 
       {/* Rating Overview */}
-      <View style={styles.card}>
+      <TouchableOpacity style={styles.card} onPress={() => onNavigate?.('farmer-reviews')}>
         <Text style={styles.cardTitle}>Your Rating</Text>
         <View style={styles.ratingContainer}>
           {renderStars(Math.round(stats.averageRating))}
@@ -352,7 +373,7 @@ export default function FarmerHomeScreen({ onNavigate }: FarmerHomeScreenProps =
             {stats.averageRating.toFixed(1)} ({stats.totalReviews} reviews)
           </Text>
         </View>
-      </View>
+      </TouchableOpacity>
     </ScrollView>
   );
 }

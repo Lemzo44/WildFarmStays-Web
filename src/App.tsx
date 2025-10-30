@@ -16,6 +16,7 @@ import ReviewsScreen from './screens/ReviewsScreen';
 import CreateListingScreen from './screens/CreateListingScreen';
 import EditListingScreen from './screens/EditListingScreen';
 import FarmerRatingScreen from './screens/FarmerRatingScreen';
+import FarmerReviewsScreen from './screens/FarmerReviewsScreen';
 import BookingDetailsScreen from './screens/BookingDetailsScreen';
 import FAQsScreen from './screens/FAQsScreen';
 import AboutUsScreen from './screens/AboutUsScreen';
@@ -145,6 +146,8 @@ function AppContent() {
         return <EditListingScreen listing={screenData} onNavigate={handleNavigate} />;
       case 'farmer-rating':
         return <FarmerRatingScreen bookingId={(screenData as any)?.bookingId} onNavigate={handleNavigate} />;
+      case 'farmer-reviews':
+        return <FarmerReviewsScreen onNavigate={handleNavigate} />;
       case 'booking-details':
         return <BookingDetailsScreen booking={screenData} onNavigate={handleNavigate} />;
       
