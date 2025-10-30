@@ -141,25 +141,34 @@ export default function BookingScreen({ listing, form, onNavigate }: BookingScre
       setReviews(listingReviews.slice(0, 3)); // Show only first 3 reviews
       setReviewStats(stats);
       
-      // Load reviewer names
+      // Load reviewer names - prefer service-provided name, fallback to direct lookup
       const names: any = {};
       for (const review of listingReviews.slice(0, 3)) {
         try {
-          if (useSupabase) {
-            const reviewer = await APIService.getById('profiles', review.reviewerId);
-            if (reviewer) {
-              const first = (reviewer as any).first_name || (reviewer as any).firstName || '';
-              const last = (reviewer as any).last_name || (reviewer as any).lastName || '';
-              names[review.id] = `${first} ${last}`.trim() || 'Anonymous';
-            } else {
-              names[review.id] = 'Anonymous';
+          // Prefer reviewerName from service (already populated by ReviewService)
+          if (review.reviewerName && review.reviewerName !== 'Anonymous') {
+            names[review.id] = review.reviewerName;
+          } else if (useSupabase && review.reviewerId) {
+            try {
+              const reviewer = await APIService.getById<any>('profiles', review.reviewerId);
+              if (reviewer) {
+                const first = reviewer.first_name || reviewer.firstName || '';
+                const last = reviewer.last_name || reviewer.lastName || '';
+                names[review.id] = `${first} ${last}`.trim() || 'Anonymous';
+              } else {
+                names[review.id] = 'Anonymous';
+              }
+            } catch (e) {
+              console.error('Error fetching reviewer profile:', e, 'reviewerId:', review.reviewerId);
+              names[review.id] = review.reviewerName || 'Anonymous';
             }
           } else {
             const reviewer = await LocalStorageService.getById('users', review.reviewerId);
             names[review.id] = reviewer ? `${reviewer.firstName} ${reviewer.lastName}` : 'Anonymous';
           }
         } catch (error) {
-          names[review.id] = 'Anonymous';
+          console.error('Error loading reviewer name:', error, review);
+          names[review.id] = review.reviewerName || 'Anonymous';
         }
       }
       setReviewerNames(names);
