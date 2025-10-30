@@ -23,19 +23,39 @@ export interface Conversation {
 }
 
 export class MessageService {
+  private static isUuid(value: string | undefined): boolean {
+    if (!value) return false;
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+  }
+
+  private static generateUuid(): string {
+    // Prefer native if available
+    const g = (globalThis as any);
+    if (g && typeof g.crypto?.randomUUID === 'function') {
+      return g.crypto.randomUUID();
+    }
+    // Fallback simple v4 generator
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = (Math.random() * 16) | 0;
+      const v = c === 'x' ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
+  }
   /**
    * Send a message
    */
   static async sendMessage(messageData: Omit<Message, 'id' | 'timestamp' | 'read'>): Promise<Message> {
     try {
       if (useSupabase) {
-        // Generate an in-app conversation id (string), but do NOT write to DB column (UUID)
-        const conversationId = messageData.conversationId || 
-          [messageData.senderId, messageData.receiverId].sort().join('-');
+        // Ensure we have a UUID conversation id for DB
+        let conversationId = messageData.conversationId;
+        if (!this.isUuid(conversationId)) {
+          conversationId = this.generateUuid();
+        }
         
         // Map to Supabase schema
         const supabaseMessageData = {
-          // conversation_id omitted since DB expects UUID; we infer threads via sender/receiver
+          conversation_id: conversationId,
           sender_id: messageData.senderId,
           receiver_id: messageData.receiverId,
           listing_id: messageData.listingId || null,
@@ -47,7 +67,7 @@ export class MessageService {
         
         return {
           id: created.id,
-          conversationId: created.conversation_id || conversationId,
+          conversationId: created.conversation_id || (conversationId as string),
           senderId: created.sender_id || created.senderId,
           senderName: messageData.senderName, // Keep from input
           receiverId: created.receiver_id || created.receiverId,
@@ -89,12 +109,12 @@ export class MessageService {
     try {
       if (useSupabase) {
         // Fetch all messages where user is sender or receiver
-        const sentMessages = await APIService.get('messages', {
+        const sentMessages = await APIService.get<any>('messages', {
           filter: { column: 'sender_id', operator: 'eq', value: userId },
           orderBy: { column: 'created_at', ascending: false }
         });
         
-        const receivedMessages = await APIService.get('messages', {
+        const receivedMessages = await APIService.get<any>('messages', {
           filter: { column: 'receiver_id', operator: 'eq', value: userId },
           orderBy: { column: 'created_at', ascending: false }
         });
@@ -130,7 +150,7 @@ export class MessageService {
         
         allMessages.forEach((message: Message) => {
           const otherUserId = message.senderId === userId ? message.receiverId : message.senderId;
-          const conversationId = this.generateConversationId(userId, otherUserId);
+          const conversationId = (m as any).conversation_id || this.generateConversationId(userId, otherUserId);
           
           if (!conversationMap.has(conversationId)) {
             conversationMap.set(conversationId, []);
@@ -220,25 +240,30 @@ export class MessageService {
   static async getConversationMessages(conversationId: string): Promise<Message[]> {
     try {
       if (useSupabase) {
-        // Fetch messages where conversation_id matches
-        // Note: conversation_id in DB might be UUID or string - try to find by participants
-        const [userId1, userId2] = conversationId.split('-');
-        
-        // Get messages between these two users
-        const allMessages = await APIService.get('messages', {
-          orderBy: { column: 'created_at', ascending: true }
-        });
-        
-        // Filter messages between these two users
-        const conversationMessages = allMessages.filter((m: any) => {
-          const sender = m.sender_id || m.senderId;
-          const receiver = m.receiver_id || m.receiverId;
-          return (
-            (sender === userId1 && receiver === userId2) ||
-            (sender === userId2 && receiver === userId1) ||
-            m.conversation_id === conversationId
-          );
-        });
+        let conversationMessages: any[] = [];
+        if (this.isUuid(conversationId)) {
+          const rows = await APIService.get<any>('messages', {
+            select: '*',
+            filter: { column: 'conversation_id', operator: 'eq', value: conversationId },
+            orderBy: { column: 'created_at', ascending: true }
+          });
+          conversationMessages = rows as any[];
+        } else {
+          // Fallback: load all and filter by participants pattern
+          const allMessages = await APIService.get<any>('messages', {
+            orderBy: { column: 'created_at', ascending: true }
+          });
+          const [userId1, userId2] = conversationId.split('-');
+          conversationMessages = (allMessages as any[]).filter((m: any) => {
+            const sender = m.sender_id || m.senderId;
+            const receiver = m.receiver_id || m.receiverId;
+            return (
+              (sender === userId1 && receiver === userId2) ||
+              (sender === userId2 && receiver === userId1) ||
+              m.conversation_id === conversationId
+            );
+          });
+        }
         
         return conversationMessages.map((m: any) => ({
           id: m.id,
@@ -329,26 +354,31 @@ export class MessageService {
    */
   static async createOrGetConversation(userId1: string, userId2: string, listingId?: string): Promise<{success: boolean, conversation?: any, message?: string}> {
     try {
-      const conversationId = this.generateConversationId(userId1, userId2);
-      
-      // Check if conversation already exists
-      const existingMessages = await this.getConversationMessages(conversationId);
-      
-      if (existingMessages.length > 0) {
+      // Try to find existing messages between these users
+      const all = await APIService.get('messages', { orderBy: { column: 'created_at', ascending: true } });
+      const between = (all as any[]).filter((m: any) => (
+        (m.sender_id === userId1 && m.receiver_id === userId2) ||
+        (m.sender_id === userId2 && m.receiver_id === userId1)
+      ));
+      if (between.length > 0) {
+        const existingConvId = between[0].conversation_id && this.isUuid(between[0].conversation_id)
+          ? between[0].conversation_id
+          : this.generateUuid();
         return { 
           success: true, 
           conversation: { 
-            id: conversationId, 
+            id: existingConvId, 
             participants: [userId1, userId2],
             listingId 
           } 
         };
       }
 
-      // Create new conversation by sending an initial seed message so it appears in lists
+      // Create new conversation id and seed message so it appears in lists
+      const newConversationId = this.generateUuid();
       try {
         await this.sendMessage({
-          conversationId,
+          conversationId: newConversationId,
           senderId: userId1,
           senderName: 'User',
           receiverId: userId2,
@@ -363,7 +393,7 @@ export class MessageService {
       return { 
         success: true, 
         conversation: { 
-          id: conversationId, 
+          id: newConversationId, 
           participants: [userId1, userId2],
           listingId 
         } 
