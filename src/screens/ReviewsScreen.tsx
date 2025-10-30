@@ -42,16 +42,18 @@ export default function ReviewsScreen({ listingId, onNavigate }: ReviewsScreenPr
       setReviews(listingReviews);
       setReviewStats(stats);
       
-      // Load reviewer names
+      // Prefill names from service (server-side join) and backfill only missing via profiles
       const names: any = {};
       const useSupabaseBackend = useSupabase;
       
       for (const review of listingReviews) {
         try {
           if (review.reviewerName && review.reviewerName !== 'Anonymous') {
-            // Use reviewerName if already provided from ReviewService
             names[review.id] = review.reviewerName;
-          } else if (useSupabaseBackend) {
+            continue;
+          }
+
+          if (useSupabaseBackend) {
             // Fetch from Supabase profiles
             const reviewer = await APIService.getById('profiles', review.reviewerId);
             if (reviewer) {
@@ -139,7 +141,7 @@ export default function ReviewsScreen({ listingId, onNavigate }: ReviewsScreenPr
           </View>
           <View style={styles.reviewerDetails}>
             <Text style={styles.reviewerName}>
-              {reviewerNames[item.id] || 'Anonymous'}
+              {reviewerNames[item.id] || item.reviewerName || 'Anonymous'}
             </Text>
             <Text style={styles.reviewDate}>
               {formatDate(item.createdAt)}
