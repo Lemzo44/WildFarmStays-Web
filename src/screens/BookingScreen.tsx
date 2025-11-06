@@ -6,9 +6,11 @@ import { LocalStorageService } from '../services/LocalStorageService';
 import { BookingService } from '../services/BookingService';
 import { FavoritesService } from '../services/FavoritesService';
 import { ReviewService } from '../services/ReviewService';
-import { detectWaiverType, WaiverType, getWaiverText } from '../utils/Waiver';
+import { detectWaiverType, getWaiverText } from '../utils/Waiver';
+import type { WaiverType } from '../utils/Waiver';
 import { MessageService } from '../services/MessageService';
 import { useSupabase } from '../lib/supabase';
+import { APIService } from '../services/APIService';
 
 interface BookingFormState {
   checkInDate?: string; // ISO date yyyy-mm-dd
@@ -139,7 +141,17 @@ export default function BookingScreen({ listing, form, onNavigate }: BookingScre
       ]);
       
       setReviews(listingReviews.slice(0, 3)); // Show only first 3 reviews
-      setReviewStats(stats);
+      setReviewStats({
+        totalReviews: stats.totalReviews || 0,
+        averageRating: stats.averageRating || 0,
+        ratingDistribution: {
+          5: stats.ratingDistribution?.[5] || 0,
+          4: stats.ratingDistribution?.[4] || 0,
+          3: stats.ratingDistribution?.[3] || 0,
+          2: stats.ratingDistribution?.[2] || 0,
+          1: stats.ratingDistribution?.[1] || 0,
+        },
+      });
       
       // Load reviewer names - prefer service-provided name, fallback to direct lookup
       const names: any = {};
@@ -310,7 +322,10 @@ export default function BookingScreen({ listing, form, onNavigate }: BookingScre
   const days = Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24));
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView 
+      style={styles.container}
+      contentContainerStyle={styles.scrollContent}
+    >
       {/* Header with image and basic info */}
       <View style={styles.header}>
         <View style={styles.imageContainer}>
@@ -555,6 +570,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F5F5F5',
+  },
+  scrollContent: {
+    paddingBottom: 100, // Extra padding to prevent content from being hidden behind bottom navigation
   },
   header: {
     backgroundColor: '#FFFFFF',

@@ -13,3 +13,4 @@ CREATE POLICY "Authenticated can read profiles"
   USING (auth.uid() IS NOT NULL);
 
 
+

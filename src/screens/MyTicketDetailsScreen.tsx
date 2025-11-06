@@ -150,8 +150,27 @@ export default function MyTicketDetailsScreen({ ticket, onNavigate }: MyTicketDe
     
     const conversation: Array<{ type: 'admin' | 'user'; timestamp: string | null; text: string }> = [];
     
-    // Split by both "--- Admin Response" and "--- User Reply"
-    const parts = ticketData.admin_notes.split(/--- (Admin Response|User Reply)/);
+    // Handle both formats:
+    // 1. "Admin Response (timestamp):\ntext" (first response, no dashes)
+    // 2. "--- Admin Response (timestamp) ---\ntext" (subsequent responses)
+    // 3. "--- User Reply (timestamp) ---\ntext" (user replies)
+    
+    const notes = ticketData.admin_notes;
+    
+    // First, check if it starts with "Admin Response" (first format without dashes)
+    if (notes.trim().startsWith('Admin Response')) {
+      const firstMatch = notes.match(/^Admin Response\s*\(([^)]+)\)\s*:\s*(.+?)(?=\n\n---|$)/s);
+      if (firstMatch) {
+        conversation.push({
+          type: 'admin',
+          timestamp: firstMatch[1],
+          text: firstMatch[2].trim()
+        });
+      }
+    }
+    
+    // Then split by "--- Admin Response" or "--- User Reply" for subsequent messages
+    const parts = notes.split(/--- (Admin Response|User Reply)/);
     
     for (let i = 1; i < parts.length; i += 2) {
       if (i + 1 < parts.length) {
@@ -161,7 +180,13 @@ export default function MyTicketDetailsScreen({ ticket, onNavigate }: MyTicketDe
         if (content) {
           const timestampMatch = content.match(/\(([^)]+)\)/);
           const timestamp = timestampMatch ? timestampMatch[1] : null;
-          const text = content.replace(/^.*?\)/s, '').trim() || content.trim();
+          // Extract text after timestamp, handling both "---" separator and ":"
+          let text = content.replace(/^[^)]*\)\s*[-:]*\s*/s, '').trim();
+          // If no timestamp found, use the whole content as text
+          if (!timestampMatch) {
+            text = content.replace(/^[-:]*\s*/s, '').trim();
+          }
+          
           const type = typeLabel.includes('Admin Response') ? 'admin' : 'user';
           
           if (text) {
@@ -251,8 +276,8 @@ export default function MyTicketDetailsScreen({ ticket, onNavigate }: MyTicketDe
           </View>
         )}
 
-        {/* Reply Input - Only show if ticket is not closed */}
-        {ticketData.status !== 'closed' && (
+        {/* Reply Input - Only show if ticket is not closed or resolved */}
+        {ticketData.status !== 'closed' && ticketData.status !== 'resolved' && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Reply to Admin</Text>
             <TextInput

@@ -52,3 +52,4 @@ FROM public.bookings b
 LEFT JOIN public.profiles p ON p.id::text = b.camper_id
 WHERE b.id = 'BOOKING_ID_HERE';  -- Replace with the booking ID you updated
 
+

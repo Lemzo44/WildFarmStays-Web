@@ -46,8 +46,11 @@ export default function TicketDetails({ ticket, onNavigate }: TicketDetailsProps
     if (!ticketData) return;
 
     try {
+      // When admin sets status to 'resolved', automatically close the ticket
+      const statusToSet = newStatus === 'resolved' ? 'closed' : newStatus;
+      
       if (useSupabase) {
-        await APIService.update('support_tickets', ticketData.id, { status: newStatus });
+        await APIService.update('support_tickets', ticketData.id, { status: statusToSet });
         const updated = await APIService.getById('support_tickets', ticketData.id);
         setTicketData({
           ...updated,
@@ -56,15 +59,27 @@ export default function TicketDetails({ ticket, onNavigate }: TicketDetailsProps
           userId: updated.user_id || updated.userId,
           createdAt: updated.created_at || updated.createdAt,
         });
-        Alert.alert('Success', 'Ticket status updated');
+        setNewStatus(statusToSet); // Update local state to reflect the actual status
+        Alert.alert(
+          'Success', 
+          newStatus === 'resolved' 
+            ? 'Ticket resolved and closed successfully' 
+            : 'Ticket status updated'
+        );
       } else {
         const updatedTicket = {
           ...ticketData,
-          status: newStatus,
+          status: statusToSet,
         };
         await LocalStorageService.save('tickets', updatedTicket);
         setTicketData(updatedTicket);
-        Alert.alert('Success', 'Ticket status updated');
+        setNewStatus(statusToSet);
+        Alert.alert(
+          'Success', 
+          newStatus === 'resolved' 
+            ? 'Ticket resolved and closed successfully' 
+            : 'Ticket status updated'
+        );
       }
     } catch (error) {
       Alert.alert('Error', 'Failed to update ticket status');
@@ -208,7 +223,15 @@ export default function TicketDetails({ ticket, onNavigate }: TicketDetailsProps
               onPress={() => setNewStatus('resolved')}
             >
               <Text style={[styles.statusOptionText, newStatus === 'resolved' && styles.statusOptionTextActive]}>
-                Resolved
+                Resolved (Closes Ticket)
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.statusOption, newStatus === 'closed' && styles.statusOptionActive]}
+              onPress={() => setNewStatus('closed')}
+            >
+              <Text style={[styles.statusOptionText, newStatus === 'closed' && styles.statusOptionTextActive]}>
+                Closed
               </Text>
             </TouchableOpacity>
           </View>

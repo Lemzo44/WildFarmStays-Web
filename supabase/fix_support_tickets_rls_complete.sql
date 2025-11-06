@@ -63,3 +63,4 @@ CREATE POLICY "Admins can update all tickets"
 -- Test query to verify auth.uid() works (run this to check)
 -- SELECT auth.uid() AS current_user_id;
 
+

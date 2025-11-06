@@ -24,3 +24,4 @@ SELECT id
 FROM public.bookings
 ORDER BY created_at DESC;
 
+
