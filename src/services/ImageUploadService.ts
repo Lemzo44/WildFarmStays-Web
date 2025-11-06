@@ -35,12 +35,12 @@ export class ImageUploadService {
         };
       }
 
-      // Validate file size (max 5MB)
-      const maxSize = 5 * 1024 * 1024; // 5MB
+      // Validate file size (max 20MB - matches Supabase Storage limit)
+      const maxSize = 20 * 1024 * 1024; // 20MB
       if (file.size > maxSize) {
         return {
           success: false,
-          error: 'Image size must be less than 5MB',
+          error: 'Image size must be less than 20MB',
         };
       }
 
