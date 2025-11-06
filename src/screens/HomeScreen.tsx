@@ -57,8 +57,43 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps = {}) {
 
       // Filter based on user role
       if (currentUser?.role === 'camper') {
-        setUpcomingStays(userBookings.filter((b: any) => b.status === 'upcoming' || b.status === 'confirmed' || b.status === 'pending'));
-        setRecentStays(userBookings.filter((b: any) => b.status === 'completed'));
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
+        
+        // Separate bookings into upcoming and recent based on end date
+        const upcoming: any[] = [];
+        const recent: any[] = [];
+        
+        userBookings.forEach((b: any) => {
+          // Skip cancelled bookings
+          if (b.status === 'cancelled') return;
+          
+          // Get end date (handle both snake_case and camelCase)
+          const endDateStr = b.endDate || b.end_date;
+          if (!endDateStr) {
+            // If no end date, use status as fallback
+            if (b.status === 'completed') {
+              recent.push(b);
+            } else {
+              upcoming.push(b);
+            }
+            return;
+          }
+          
+          const endDate = new Date(endDateStr);
+          endDate.setHours(0, 0, 0, 0);
+          
+          // If end date has passed, it's a recent stay
+          if (endDate < today) {
+            recent.push(b);
+          } else {
+            // If end date is today or in the future, it's upcoming
+            upcoming.push(b);
+          }
+        });
+        
+        setUpcomingStays(upcoming);
+        setRecentStays(recent);
         try {
           // Load favorites from backend (or service fallback)
           const favListings = await FavoritesService.getFavoriteListingsWithDetails(currentUser.id);
