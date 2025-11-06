@@ -169,18 +169,37 @@ export class APIService {
     }
 
     try {
+      console.log(`Updating ${table}/${id} with:`, updates);
+      
       // First, update the record
-      const { error: updateError } = await (supabase as any)
+      const { data: updateData, error: updateError } = await (supabase as any)
         .from(table)
         .update(updates as unknown as Record<string, unknown>)
-        .eq('id', id);
+        .eq('id', id)
+        .select(); // Add select to see what was actually updated
 
       if (updateError) {
         console.error(`Error updating ${table}:`, updateError);
+        console.error('Update error details:', {
+          message: updateError.message,
+          code: updateError.code,
+          details: updateError.details,
+          hint: updateError.hint
+        });
         throw updateError;
       }
+      
+      console.log(`Update response for ${table}/${id}:`, updateData);
+      
+      // If updateData is an array, take the first element
+      // If it's empty or null, fetch separately
+      if (updateData && Array.isArray(updateData) && updateData.length > 0) {
+        const updatedRecord = updateData[0];
+        console.log(`Successfully updated ${table}/${id}:`, updatedRecord);
+        return updatedRecord as T;
+      }
 
-      // Then fetch the updated record separately to avoid .single() issues
+      // If update didn't return data, fetch separately
       const { data, error: selectError } = await (supabase as any)
         .from(table)
         .select('*')
@@ -191,6 +210,7 @@ export class APIService {
         console.error(`Error fetching updated ${table}:`, selectError);
         // If select fails but update succeeded, try to construct response from updates
         // This can happen with RLS policies that allow update but not select
+        console.warn(`Update succeeded but cannot read back ${table}/${id} - returning updates as fallback`);
         return { id, ...updates } as T;
       }
 
@@ -200,6 +220,7 @@ export class APIService {
         return { id, ...updates } as T;
       }
 
+      console.log(`Fetched updated ${table}/${id}:`, data);
       return data as T;
     } catch (error: any) {
       console.error(`Error in APIService.update for ${table}:`, error);

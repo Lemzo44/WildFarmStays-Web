@@ -83,10 +83,30 @@ export default function ListingManagement({ onNavigate }: ListingManagementProps
           text: 'Approve',
           onPress: async () => {
             try {
+              console.log('Approving listing:', listingId);
+              
               // Update both status (for approval workflow) and availability (for operational status)
-              await APIService.update('listings', listingId, {
+              // Use snake_case field names to match database schema
+              const updateData = {
                 status: 'approved',
                 availability: 'available'
+              };
+              
+              // Also ensure we're updating the correct fields
+              console.log('Updating listing with:', updateData);
+              
+              console.log('Update data:', updateData);
+              
+              const result = await APIService.update('listings', listingId, updateData);
+              
+              console.log('Update result:', result);
+              
+              // Verify the update by fetching the listing again
+              const verifyListing = await APIService.getById('listings', listingId);
+              console.log('Verified listing after update:', {
+                id: verifyListing?.id,
+                status: verifyListing?.status,
+                availability: verifyListing?.availability
               });
               
               // Reload listings to reflect the change
@@ -97,6 +117,12 @@ export default function ListingManagement({ onNavigate }: ListingManagementProps
               ]);
             } catch (error: any) {
               console.error('Error approving listing:', error);
+              console.error('Full error details:', {
+                message: error?.message,
+                code: error?.code,
+                details: error?.details,
+                hint: error?.hint
+              });
               const errorMessage = error?.message || error?.error_description || 'Unknown error';
               Alert.alert('Error', `Failed to approve listing: ${errorMessage}`);
             }
