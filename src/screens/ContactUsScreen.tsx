@@ -4,6 +4,7 @@ import { LocalStorageService } from '../services/LocalStorageService';
 import { APIService } from '../services/APIService';
 import { useAuth } from '../contexts/AuthContext';
 import { useSupabase } from '../lib/supabase';
+import { messageEmailWebhook } from '../lib/config';
 
 interface ContactUsScreenProps {
   onNavigate?: (screen: string) => void;
@@ -45,6 +46,7 @@ export default function ContactUsScreen({ onNavigate }: ContactUsScreenProps) {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    phone: '',
     subject: '',
     message: ''
   });
@@ -61,43 +63,75 @@ export default function ContactUsScreen({ onNavigate }: ContactUsScreenProps) {
     setShowSuccess(false);
 
     try {
-      if (useSupabase) {
-        // Create support ticket in Supabase
-        const ticketData = {
-          user_id: currentUser?.id || null,
-          name: formData.name,
-          email: formData.email,
-          subject: formData.subject || 'Contact Us Inquiry',
-          message: formData.message,
-          status: 'open',
-        };
+      // Check if user is logged in (camper or farmer)
+      const isLoggedIn = currentUser && (currentUser.role === 'camper' || currentUser.role === 'farmer');
+      
+      if (isLoggedIn) {
+        // Logged-in users: Create support ticket
+        if (useSupabase) {
+          const ticketData = {
+            user_id: currentUser.id,
+            name: formData.name,
+            email: formData.email,
+            subject: formData.subject || 'Contact Us Inquiry',
+            message: formData.message,
+            status: 'open',
+          };
 
-        console.log('Creating support ticket with data:', ticketData);
-        console.log('Current user ID:', currentUser?.id);
-        
-        const result = await APIService.create('support_tickets', ticketData);
-        console.log('Support ticket created successfully:', result);
+          console.log('Creating support ticket for logged-in user:', ticketData);
+          const result = await APIService.create('support_tickets', ticketData);
+          console.log('Support ticket created successfully:', result);
+        } else {
+          // Create support ticket in localStorage
+          const ticket = {
+            id: Date.now().toString(),
+            subject: formData.subject || 'Contact Us Inquiry',
+            message: formData.message,
+            category: 'General',
+            priority: 'normal',
+            status: 'open',
+            userName: formData.name,
+            userEmail: formData.email,
+            userId: currentUser.id,
+            createdAt: new Date().toISOString(),
+          };
+
+          await LocalStorageService.save('tickets', ticket);
+        }
       } else {
-        // Create support ticket in localStorage
-        const ticket = {
-          id: Date.now().toString(),
-          subject: formData.subject || 'Contact Us Inquiry',
-          message: formData.message,
-          category: 'General',
-          priority: 'normal',
-          status: 'open',
-          userName: formData.name,
-          userEmail: formData.email,
-          userId: currentUser?.id || 'guest',
-          createdAt: new Date().toISOString(),
-        };
-
-        await LocalStorageService.save('tickets', ticket);
+        // Public (non-logged-in) users: Send email notification to admin
+        // Support tickets should only be created for logged-in campers/farmers
+        if (messageEmailWebhook) {
+          try {
+            await fetch(messageEmailWebhook, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                toEmail: 'admin@wildfarmstays.com', // Admin email - could be from config
+                toName: 'WildFarmStays Admin',
+                subject: `Public Contact Form: ${formData.subject || 'Contact Us Inquiry'}`,
+                messagePreview: `From: ${formData.name} (${formData.email}${formData.phone ? `, ${formData.phone}` : ''})\n\n${formData.message}`,
+                contactName: formData.name,
+                contactEmail: formData.email,
+                contactPhone: formData.phone || '',
+                contactMessage: formData.message,
+                contactSubject: formData.subject || 'Contact Us Inquiry',
+                isPublicContact: true,
+              }),
+            });
+            console.log('Public contact message sent to admin via email');
+          } catch (emailError) {
+            console.error('Error sending public contact email:', emailError);
+            // Don't fail the whole operation, but log it
+          }
+        } else {
+          console.warn('Email webhook not configured - public contact message not sent');
+        }
       }
       
       // Show success message and clear form
       setShowSuccess(true);
-      setFormData({ name: '', email: '', subject: '', message: '' });
+      setFormData({ name: '', email: '', phone: '', subject: '', message: '' });
       
       // Hide success message after 5 seconds
       setTimeout(() => {
@@ -107,11 +141,13 @@ export default function ContactUsScreen({ onNavigate }: ContactUsScreenProps) {
       // Also show Alert as backup
       Alert.alert(
         'Message Sent!',
-        'Thank you for contacting us. We will get back to you as soon as possible.',
+        isLoggedIn 
+          ? 'Your support ticket has been created. We will get back to you as soon as possible.'
+          : 'Thank you for contacting us. We will get back to you via email as soon as possible.',
         [{ text: 'OK' }]
       );
     } catch (error) {
-      console.error('Error creating ticket:', error);
+      console.error('Error submitting contact form:', error);
       Alert.alert('Error', 'Failed to send message. Please try again.');
     } finally {
       setIsSubmitting(false);
@@ -171,6 +207,19 @@ export default function ContactUsScreen({ onNavigate }: ContactUsScreenProps) {
             keyboardType="email-address"
             autoCapitalize="none"
           />
+
+          {!currentUser && (
+            <>
+              <Text style={styles.inputLabel}>Phone (Optional)</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.phone}
+                onChangeText={(value) => setFormData({ ...formData, phone: value })}
+                placeholder="+353 1 234 5678"
+                keyboardType="phone-pad"
+              />
+            </>
+          )}
 
           <Text style={styles.inputLabel}>Subject</Text>
           <TextInput
