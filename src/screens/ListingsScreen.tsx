@@ -273,17 +273,34 @@ export default function ListingsScreen({ onNavigate }: ListingsScreenProps = {})
           <Text style={styles.location}>📍 {item.location}</Text>
           
           <View style={styles.ratingContainer}>
-            <View style={styles.ratingRow}>
-              <Text style={styles.star}>⭐</Text>
-              <Text style={styles.rating}>
-                {listingReviewStats[item.id]?.totalReviews > 0 
-                  ? listingReviewStats[item.id].averageRating.toFixed(1) 
-                  : item.rating}
-              </Text>
-              {listingReviewStats[item.id]?.totalReviews > 0 && (
-                <Text style={styles.reviewCount}>({listingReviewStats[item.id].totalReviews})</Text>
-              )}
-            </View>
+            {!isFarmer && currentUser ? (
+              <TouchableOpacity
+                style={styles.ratingRow}
+                onPress={() => handleBookNow(item)}
+              >
+                <Text style={styles.star}>⭐</Text>
+                <Text style={styles.rating}>
+                  {listingReviewStats[item.id]?.totalReviews > 0 
+                    ? listingReviewStats[item.id].averageRating.toFixed(1) 
+                    : item.rating}
+                </Text>
+                {listingReviewStats[item.id]?.totalReviews > 0 && (
+                  <Text style={styles.reviewCount}>({listingReviewStats[item.id].totalReviews})</Text>
+                )}
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.ratingRow}>
+                <Text style={styles.star}>⭐</Text>
+                <Text style={styles.rating}>
+                  {listingReviewStats[item.id]?.totalReviews > 0 
+                    ? listingReviewStats[item.id].averageRating.toFixed(1) 
+                    : item.rating}
+                </Text>
+                {listingReviewStats[item.id]?.totalReviews > 0 && (
+                  <Text style={styles.reviewCount}>({listingReviewStats[item.id].totalReviews})</Text>
+                )}
+              </View>
+            )}
             <Tooltip 
               text={`Wildness rating: ${item.wildnessRating} out of 5. Higher scores indicate more remote, natural settings.`}
               visible={hoveredElement === `wildness-${item.id}`}

@@ -318,9 +318,12 @@ export default function SearchScreen({ onNavigate }: SearchScreenProps = {}) {
                 <View style={styles.wildnessChip}>
                   <Text style={styles.chipText}>Wildness: {listing.wildnessRating}/5</Text>
                 </View>
-                <View style={styles.ratingChip}>
+                <TouchableOpacity
+                  style={styles.ratingChip}
+                  onPress={() => handleBookNow(listing)}
+                >
                   <Text style={styles.chipText}>⭐ {listing.rating || 'New'}</Text>
-                </View>
+                </TouchableOpacity>
               </View>
               
               <Text style={styles.listingDescription} numberOfLines={2}>
