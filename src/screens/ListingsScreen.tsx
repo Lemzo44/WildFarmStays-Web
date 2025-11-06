@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, FlatList } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, FlatList, Image } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { LocalStorageService } from '../services/LocalStorageService';
@@ -227,13 +227,47 @@ export default function ListingsScreen({ onNavigate }: ListingsScreenProps = {})
     }
   };
 
-  const renderListingCard = ({ item }: { item: any }) => (
+  // Helper function to normalize images for a listing
+  const normalizeListingImages = (listing: any): string[] => {
+    if (!listing) return [];
+    
+    let images: string[] = [];
+    const imagesField = listing.images;
+    
+    if (Array.isArray(imagesField)) {
+      images = imagesField.filter((img: any) => 
+        img && 
+        typeof img === 'string' && 
+        (img.startsWith('http') || img.startsWith('https'))
+      );
+    } else if (imagesField && typeof imagesField === 'string') {
+      if (imagesField.startsWith('http') || imagesField.startsWith('https')) {
+        images = [imagesField];
+      }
+    }
+    
+    return images;
+  };
+
+  const renderListingCard = ({ item }: { item: any }) => {
+    const listingImages = normalizeListingImages(item);
+    const firstImage = listingImages.length > 0 ? listingImages[0] : null;
+    
+    return (
     <View style={styles.listingCard}>
       {/* Web layout: side-by-side */}
       <View style={styles.webCardLayout}>
         <View style={styles.webImageContainer}>
           <View style={styles.cardImage}>
-            <Text style={styles.imagePlaceholder}>🖼️</Text>
+            {firstImage ? (
+              <Image
+                source={{ uri: firstImage }}
+                style={styles.cardImageContent}
+                resizeMode="cover"
+              />
+            ) : (
+              <Text style={styles.imagePlaceholder}>🖼️</Text>
+            )}
           </View>
           {!isFarmer && currentUser && (
             <Tooltip 
@@ -422,7 +456,8 @@ export default function ListingsScreen({ onNavigate }: ListingsScreenProps = {})
         </View>
       </View>
     </View>
-  );
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -637,6 +672,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#E8F5E8',
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  cardImageContent: {
+    width: '100%',
+    height: '100%',
   },
   imagePlaceholder: {
     fontSize: 48,
