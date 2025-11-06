@@ -5,17 +5,25 @@ import { APIService } from '../services/APIService';
 
 interface ListingManagementProps {
   onNavigate?: (screen: string, data?: any) => void;
+  initialFilter?: string;
 }
 
-export default function ListingManagement({ onNavigate }: ListingManagementProps) {
+export default function ListingManagement({ onNavigate, initialFilter }: ListingManagementProps) {
   const [listings, setListings] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterStatus, setFilterStatus] = useState<string>(initialFilter || 'all');
   const [filterLocation, setFilterLocation] = useState<string>('all');
 
   useEffect(() => {
     loadListings();
   }, []);
+
+  // Apply initial filter when component mounts or filter changes
+  useEffect(() => {
+    if (initialFilter && initialFilter !== filterStatus) {
+      setFilterStatus(initialFilter);
+    }
+  }, [initialFilter]);
 
   useEffect(() => {
     applyFilters();

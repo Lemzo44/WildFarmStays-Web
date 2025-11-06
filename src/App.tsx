@@ -165,7 +165,7 @@ function AppContent() {
       case 'user-details':
         return <UserDetails user={screenData} onNavigate={handleNavigate} />;
       case 'listing-management':
-        return <ListingManagement onNavigate={handleNavigate} />;
+        return <ListingManagement onNavigate={handleNavigate} initialFilter={(screenData as any)?.filter} />;
       case 'booking-management':
         return <BookingManagement onNavigate={handleNavigate} />;
       case 'admin-booking-details':

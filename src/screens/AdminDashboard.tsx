@@ -55,9 +55,23 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
       const farmers = users.filter((u: any) => u.role === 'farmer');
       
       // Load listings
-      const listings = await LocalStorageService.getAll('listings');
-      const activeListings = listings.filter((l: any) => l.availability === 'available');
-      const pendingListings = listings.filter((l: any) => l.availability === 'pending');
+      let listings: any[] = [];
+      if (useSupabase) {
+        listings = await APIService.get('listings', {
+          orderBy: { column: 'created_at', ascending: false }
+        });
+      } else {
+        listings = await LocalStorageService.getAll('listings');
+      }
+      
+      // Filter listings - check both status and availability fields
+      const activeListings = listings.filter((l: any) => 
+        (l.status === 'approved' || l.status === 'live') || 
+        (l.availability === 'available' && l.status !== 'rejected')
+      );
+      const pendingListings = listings.filter((l: any) => 
+        l.status === 'pending' || (l.availability === 'pending' && l.status !== 'approved')
+      );
       
       // Load bookings
       const bookings = await LocalStorageService.getAll('bookings');

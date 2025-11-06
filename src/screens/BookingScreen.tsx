@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Image } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { LocalStorageService } from '../services/LocalStorageService';
@@ -74,6 +74,41 @@ export default function BookingScreen({ listing, form, onNavigate }: BookingScre
   };
 
   const currentListing = listing || mockListing;
+
+  // Normalize images - handle both array and single string, and ensure URLs are valid
+  const normalizeImages = (listing: any): string[] => {
+    if (!listing) return [];
+    
+    let images: string[] = [];
+    
+    // Check for images field (could be array or string)
+    const imagesField = listing.images;
+    
+    if (Array.isArray(imagesField)) {
+      // Filter out empty/null values and ensure they're valid URLs
+      images = imagesField.filter((img: any) => 
+        img && 
+        typeof img === 'string' && 
+        (img.startsWith('http') || img.startsWith('https'))
+      );
+    } else if (imagesField && typeof imagesField === 'string') {
+      // Single image as string
+      if (imagesField.startsWith('http') || imagesField.startsWith('https')) {
+        images = [imagesField];
+      }
+    }
+    
+    // Debug logging
+    if (images.length > 0) {
+      console.log('BookingScreen: Found images for listing', currentListing.id, ':', images);
+    } else {
+      console.log('BookingScreen: No images found for listing', currentListing.id, 'images field:', imagesField);
+    }
+    
+    return images;
+  };
+
+  const listingImages = normalizeImages(currentListing);
 
   useEffect(() => {
     checkFavoriteStatus();
@@ -329,7 +364,20 @@ export default function BookingScreen({ listing, form, onNavigate }: BookingScre
       {/* Header with image and basic info */}
       <View style={styles.header}>
         <View style={styles.imageContainer}>
-          <Text style={styles.imagePlaceholder}>🖼️</Text>
+          {listingImages.length > 0 ? (
+            <Image
+              source={{ uri: listingImages[0] }}
+              style={styles.listingImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <Text style={styles.imagePlaceholder}>🖼️</Text>
+          )}
+          {listingImages.length > 1 && (
+            <View style={styles.imageCountBadge}>
+              <Text style={styles.imageCountText}>+{listingImages.length - 1}</Text>
+            </View>
+          )}
         </View>
         <View style={styles.headerInfo}>
           <View style={styles.titleRow}>
@@ -591,9 +639,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 16,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  listingImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 8,
   },
   imagePlaceholder: {
     fontSize: 32,
+  },
+  imageCountBadge: {
+    position: 'absolute',
+    bottom: 4,
+    right: 4,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  imageCountText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
   },
   headerInfo: {
     flex: 1,
