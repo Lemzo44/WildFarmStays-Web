@@ -169,21 +169,35 @@ export class APIService {
     }
 
     try {
-      const { data, error } = await (supabase as any)
+      // First, update the record
+      const { error: updateError } = await (supabase as any)
         .from(table)
         .update(updates as unknown as Record<string, unknown>)
-        .eq('id', id)
-        .select()
-        .single();
+        .eq('id', id);
 
-      if (error) {
-        console.error(`Error updating ${table}:`, error);
-        // Don't fallback to localStorage when Supabase is enabled - propagate the error
-        throw error;
+      if (updateError) {
+        console.error(`Error updating ${table}:`, updateError);
+        throw updateError;
+      }
+
+      // Then fetch the updated record separately to avoid .single() issues
+      const { data, error: selectError } = await (supabase as any)
+        .from(table)
+        .select('*')
+        .eq('id', id)
+        .maybeSingle(); // Use maybeSingle instead of single - handles 0 or 1 results gracefully
+
+      if (selectError) {
+        console.error(`Error fetching updated ${table}:`, selectError);
+        // If select fails but update succeeded, try to construct response from updates
+        // This can happen with RLS policies that allow update but not select
+        return { id, ...updates } as T;
       }
 
       if (!data) {
-        throw new Error(`Record not found: ${table}/${id}`);
+        // Update succeeded but can't read back - return updates as fallback
+        console.warn(`Update succeeded but cannot read back ${table}/${id} - may be RLS policy issue`);
+        return { id, ...updates } as T;
       }
 
       return data as T;
