@@ -58,6 +58,8 @@ export default function BookingScreen({ listing, form, onNavigate }: BookingScre
   const [checkingAvailability, setCheckingAvailability] = useState(false);
   const [waiverAccepted, setWaiverAccepted] = useState(false);
   const [waiverType, setWaiverType] = useState<WaiverType>(() => detectWaiverType({ county: (listing as any)?.county, location: (listing as any)?.location }));
+  const [showImageGallery, setShowImageGallery] = useState(false);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
   // Mock listing data if not provided
   const mockListing = {
@@ -363,7 +365,16 @@ export default function BookingScreen({ listing, form, onNavigate }: BookingScre
     >
       {/* Header with image and basic info */}
       <View style={styles.header}>
-        <View style={styles.imageContainer}>
+        <TouchableOpacity 
+          style={styles.imageContainer}
+          onPress={() => {
+            if (listingImages.length > 0) {
+              setSelectedImageIndex(0);
+              setShowImageGallery(true);
+            }
+          }}
+          disabled={listingImages.length === 0}
+        >
           {listingImages.length > 0 ? (
             <Image
               source={{ uri: listingImages[0] }}
@@ -378,7 +389,7 @@ export default function BookingScreen({ listing, form, onNavigate }: BookingScre
               <Text style={styles.imageCountText}>+{listingImages.length - 1}</Text>
             </View>
           )}
-        </View>
+        </TouchableOpacity>
         <View style={styles.headerInfo}>
           <View style={styles.titleRow}>
             <Text style={styles.title}>{currentListing.title}</Text>
@@ -610,6 +621,81 @@ export default function BookingScreen({ listing, form, onNavigate }: BookingScre
           <TouchableOpacity onPress={() => setShowError(false)}>
             <Text style={styles.errorClose}>✕</Text>
           </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Image Gallery Modal */}
+      {showImageGallery && listingImages.length > 0 && (
+        <View style={styles.galleryModal}>
+          <View style={styles.galleryHeader}>
+            <Text style={styles.galleryTitle}>
+              {selectedImageIndex + 1} / {listingImages.length}
+            </Text>
+            <TouchableOpacity 
+              style={styles.galleryCloseButton}
+              onPress={() => setShowImageGallery(false)}
+            >
+              <Text style={styles.galleryCloseText}>✕</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <View style={styles.galleryImageContainer}>
+            <Image
+              source={{ uri: listingImages[selectedImageIndex] }}
+              style={styles.galleryImage}
+              resizeMode="contain"
+            />
+          </View>
+
+          {listingImages.length > 1 && (
+            <View style={styles.galleryControls}>
+              <TouchableOpacity
+                style={[styles.galleryNavButton, selectedImageIndex === 0 && styles.galleryNavButtonDisabled]}
+                onPress={() => {
+                  if (selectedImageIndex > 0) {
+                    setSelectedImageIndex(selectedImageIndex - 1);
+                  }
+                }}
+                disabled={selectedImageIndex === 0}
+              >
+                <Text style={styles.galleryNavText}>← Previous</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.galleryNavButton, selectedImageIndex === listingImages.length - 1 && styles.galleryNavButtonDisabled]}
+                onPress={() => {
+                  if (selectedImageIndex < listingImages.length - 1) {
+                    setSelectedImageIndex(selectedImageIndex + 1);
+                  }
+                }}
+                disabled={selectedImageIndex === listingImages.length - 1}
+              >
+                <Text style={styles.galleryNavText}>Next →</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Thumbnail strip */}
+          {listingImages.length > 1 && (
+            <View style={styles.thumbnailStrip}>
+              {listingImages.map((image, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.thumbnail,
+                    selectedImageIndex === index && styles.thumbnailActive
+                  ]}
+                  onPress={() => setSelectedImageIndex(index)}
+                >
+                  <Image
+                    source={{ uri: image }}
+                    style={styles.thumbnailImage}
+                    resizeMode="cover"
+                  />
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
         </View>
       )}
     </ScrollView>
@@ -991,5 +1077,111 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginLeft: 8,
+  },
+  galleryModal: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+    zIndex: 1000,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  galleryHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    paddingTop: 40,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    zIndex: 1001,
+  },
+  galleryTitle: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  galleryCloseButton: {
+    padding: 8,
+  },
+  galleryCloseText: {
+    color: '#FFFFFF',
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  galleryImageContainer: {
+    flex: 1,
+    width: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  galleryImage: {
+    width: '100%',
+    height: '100%',
+    maxWidth: '100%',
+    maxHeight: '70%',
+  },
+  galleryControls: {
+    position: 'absolute',
+    bottom: 100,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    zIndex: 1001,
+  },
+  galleryNavButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    minWidth: 120,
+    alignItems: 'center',
+  },
+  galleryNavButtonDisabled: {
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    opacity: 0.5,
+  },
+  galleryNavText: {
+    color: '#333',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  thumbnailStrip: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 20,
+    paddingHorizontal: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    gap: 10,
+    zIndex: 1001,
+  },
+  thumbnail: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    overflow: 'hidden',
+  },
+  thumbnailActive: {
+    borderColor: '#2E7D32',
+  },
+  thumbnailImage: {
+    width: '100%',
+    height: '100%',
   },
 });
