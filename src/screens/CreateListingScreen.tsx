@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { LocalStorageService } from '../services/LocalStorageService';
 import { APIService } from '../services/APIService';
 import { useSupabase } from '../lib/supabase';
+import { ImageUploadService } from '../services/ImageUploadService';
 
 interface CreateListingScreenProps {
   onNavigate?: (screen: string) => void;
@@ -43,6 +44,7 @@ export default function CreateListingScreen({ onNavigate }: CreateListingScreenP
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedStartDate, setSelectedStartDate] = useState('');
   const [selectedEndDate, setSelectedEndDate] = useState('');
+  const [uploadingImages, setUploadingImages] = useState<{ [key: number]: boolean }>({});
 
   const availableAmenities = [
     'Drinking water',
@@ -238,16 +240,56 @@ export default function CreateListingScreen({ onNavigate }: CreateListingScreenP
     }));
   };
 
-  const handleAddImage = () => {
-    // For web, we'll simulate adding an image with a placeholder URL
-    // In a real implementation, this would open a file picker
-    const newImageUrl = `https://example.com/farm-image-${Date.now()}.jpg`;
-    
-    if (formData.images.length < 5) {
-      setFormData(prev => ({
-        ...prev,
-        images: [...prev.images, newImageUrl]
-      }));
+  const handleAddImage = async () => {
+    if (!currentUser) {
+      setError('You must be logged in to upload images.');
+      setShowError(true);
+      return;
+    }
+
+    if (formData.images.length >= 5) {
+      setError('Maximum 5 images allowed.');
+      setShowError(true);
+      return;
+    }
+
+    try {
+      // Open file picker
+      const file = await ImageUploadService.selectImageFile();
+      
+      if (!file) {
+        return; // User cancelled
+      }
+
+      const imageIndex = formData.images.length;
+      setUploadingImages(prev => ({ ...prev, [imageIndex]: true }));
+
+      // Upload image
+      const result = await ImageUploadService.uploadImage(
+        file,
+        'listings',
+        currentUser.id
+      );
+
+      if (result.success && result.url) {
+        setFormData(prev => ({
+          ...prev,
+          images: [...prev.images, result.url!]
+        }));
+      } else {
+        setError(result.error || 'Failed to upload image');
+        setShowError(true);
+      }
+    } catch (error: any) {
+      console.error('Error adding image:', error);
+      setError('Failed to upload image. Please try again.');
+      setShowError(true);
+    } finally {
+      setUploadingImages(prev => {
+        const updated = { ...prev };
+        delete updated[formData.images.length];
+        return updated;
+      });
     }
   };
 
@@ -486,9 +528,17 @@ export default function CreateListingScreen({ onNavigate }: CreateListingScreenP
           <View style={styles.imageContainer}>
             {formData.images.map((image, index) => (
               <View key={index} style={styles.imageWrapper}>
-                <View style={styles.imagePlaceholder}>
-                  <Text style={styles.imageText}>📷 Image {index + 1}</Text>
-                </View>
+                {image ? (
+                  <Image
+                    source={{ uri: image }}
+                    style={styles.imagePreview}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View style={styles.imagePlaceholder}>
+                    <Text style={styles.imageText}>📷 Image {index + 1}</Text>
+                  </View>
+                )}
                 <TouchableOpacity
                   style={styles.removeImageButton}
                   onPress={() => handleRemoveImage(index)}
@@ -501,8 +551,11 @@ export default function CreateListingScreen({ onNavigate }: CreateListingScreenP
               <TouchableOpacity
                 style={styles.addImageButton}
                 onPress={handleAddImage}
+                disabled={uploadingImages[formData.images.length]}
               >
-                <Text style={styles.addImageText}>+ Add Photo</Text>
+                <Text style={styles.addImageText}>
+                  {uploadingImages[formData.images.length] ? 'Uploading...' : '+ Add Photo'}
+                </Text>
               </TouchableOpacity>
             )}
           </View>
@@ -1190,6 +1243,13 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#2E7D32',
+  },
+  imagePreview: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: '#2E7D32',
   },

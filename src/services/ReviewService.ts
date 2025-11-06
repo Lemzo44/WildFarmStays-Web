@@ -12,6 +12,7 @@ export interface Review {
   title?: string;
   approved?: boolean;
   bookingId?: string;
+  images?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -30,7 +31,7 @@ export class ReviewService {
     try {
       if (useSupabase) {
         // Map to Supabase schema
-        const supabaseReviewData = {
+        const supabaseReviewData: any = {
           listing_id: reviewData.listingId,
           reviewer_id: reviewData.reviewerId,
           booking_id: reviewData.bookingId || null,
@@ -39,6 +40,11 @@ export class ReviewService {
           comment: reviewData.comment || null,
           approved: reviewData.approved || false,
         };
+
+        // Add images if provided
+        if ((reviewData as any).images && Array.isArray((reviewData as any).images)) {
+          supabaseReviewData.images = (reviewData as any).images;
+        }
 
         const created = await APIService.create<any>('reviews', supabaseReviewData);
         
@@ -54,6 +60,7 @@ export class ReviewService {
           title: row.title || undefined,
           approved: row.approved || false,
           bookingId: row.booking_id || row.bookingId,
+          images: row.images || [],
           createdAt: row.created_at || row.createdAt || new Date().toISOString(),
           updatedAt: row.updated_at || row.updatedAt || new Date().toISOString(),
         };
@@ -125,6 +132,7 @@ export class ReviewService {
         for (const review of (reviews || [])) {
           const rid = review.reviewer_id || review.reviewerId;
           let name = idToName[rid] || review.reviewer_name || review.reviewerName || '';
+          const reviewImages = review.images || [];
           if (!name) {
             try {
               const prof = await APIService.getById<any>('profiles', rid);
@@ -143,6 +151,7 @@ export class ReviewService {
             title: review.title || undefined,
             approved: review.approved || false,
             bookingId: review.booking_id || review.bookingId,
+            images: reviewImages.length > 0 ? reviewImages : undefined,
             createdAt: review.created_at || review.createdAt || '',
             updatedAt: review.updated_at || review.updatedAt || '',
           });

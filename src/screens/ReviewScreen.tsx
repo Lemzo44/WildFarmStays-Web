@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { ReviewService } from '../services/ReviewService';
+import { ImageUploadService } from '../services/ImageUploadService';
 
 interface ReviewScreenProps {
   listing?: any;
@@ -17,9 +18,11 @@ export default function ReviewScreen({ listing, booking, onNavigate }: ReviewScr
   const [rating, setRating] = useState(0);
   const [title, setTitle] = useState('');
   const [comment, setComment] = useState('');
+  const [images, setImages] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showError, setShowError] = useState(false);
+  const [uploadingImages, setUploadingImages] = useState<{ [key: number]: boolean }>({});
 
   // Mock listing data if not provided
   const mockListing = {
@@ -43,6 +46,56 @@ export default function ReviewScreen({ listing, booking, onNavigate }: ReviewScr
         5: 'Amazing stay!'
       };
       setTitle(titles[selectedRating]);
+    }
+  };
+
+  const handleAddImage = async () => {
+    if (!currentUser) {
+      setError('You must be logged in to upload images.');
+      setShowError(true);
+      return;
+    }
+
+    if (images.length >= 3) {
+      setError('Maximum 3 images allowed.');
+      setShowError(true);
+      return;
+    }
+
+    try {
+      // Open file picker
+      const file = await ImageUploadService.selectImageFile();
+      
+      if (!file) {
+        return; // User cancelled
+      }
+
+      const imageIndex = images.length;
+      setUploadingImages(prev => ({ ...prev, [imageIndex]: true }));
+
+      // Upload image
+      const result = await ImageUploadService.uploadImage(
+        file,
+        'reviews',
+        currentUser.id
+      );
+
+      if (result.success && result.url) {
+        setImages(prev => [...prev, result.url!]);
+      } else {
+        setError(result.error || 'Failed to upload image');
+        setShowError(true);
+      }
+    } catch (error: any) {
+      console.error('Error adding image:', error);
+      setError('Failed to upload image. Please try again.');
+      setShowError(true);
+    } finally {
+      setUploadingImages(prev => {
+        const updated = { ...prev };
+        delete updated[images.length];
+        return updated;
+      });
     }
   };
 
@@ -98,6 +151,7 @@ export default function ReviewScreen({ listing, booking, onNavigate }: ReviewScr
         rating,
         title: title.trim(),
         comment: comment.trim(),
+        images: images.length > 0 ? images : undefined,
         createdAt: new Date().toISOString(),
       };
 
@@ -176,6 +230,44 @@ export default function ReviewScreen({ listing, booking, onNavigate }: ReviewScr
           maxLength={1000}
         />
         <Text style={styles.charCount}>{comment.length}/1000</Text>
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Photos (Optional)</Text>
+        <Text style={styles.commentLabel}>
+          Add up to 3 photos to share your experience
+        </Text>
+        
+        <View style={styles.imageContainer}>
+          {images.map((image, index) => (
+            <View key={index} style={styles.imageWrapper}>
+              <Image
+                source={{ uri: image }}
+                style={styles.imagePreview}
+                resizeMode="cover"
+              />
+              <TouchableOpacity
+                style={styles.removeImageButton}
+                onPress={() => {
+                  setImages(prev => prev.filter((_, i) => i !== index));
+                }}
+              >
+                <Text style={styles.removeImageText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+          ))}
+          {images.length < 3 && (
+            <TouchableOpacity
+              style={styles.addImageButton}
+              onPress={handleAddImage}
+              disabled={uploadingImages[images.length]}
+            >
+              <Text style={styles.addImageText}>
+                {uploadingImages[images.length] ? 'Uploading...' : '+ Add Photo'}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       <View style={styles.card}>
@@ -388,6 +480,56 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginLeft: 8,
+  },
+  imageContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginTop: 16,
+  },
+  imageWrapper: {
+    position: 'relative',
+  },
+  imagePreview: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#2E7D32',
+  },
+  removeImageButton: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#F44336',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  removeImageText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  addImageButton: {
+    width: 80,
+    height: 80,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#E0E0E0',
+    borderStyle: 'dashed',
+  },
+  addImageText: {
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
   },
 });
 
