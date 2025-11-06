@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, Alert } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { LocalStorageService } from '../services/LocalStorageService';
 import { APIService } from '../services/APIService';
 import { useSupabase } from '../lib/supabase';
+import { ImageUploadService } from '../services/ImageUploadService';
 
 interface EditListingScreenProps {
   listing?: any;
@@ -43,6 +44,11 @@ export default function EditListingScreen({ listing, onNavigate }: EditListingSc
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedStartDate, setSelectedStartDate] = useState('');
   const [selectedEndDate, setSelectedEndDate] = useState('');
+  const [uploadingImages, setUploadingImages] = useState<{ [key: number]: boolean }>({});
+  
+  // Refs for scrolling to fields with errors
+  const scrollViewRef = useRef<ScrollView>(null);
+  const fieldRefs = useRef<{ [key: string]: any }>({});
 
   // Mock listing data if not provided
   const mockListing = {
@@ -301,17 +307,77 @@ export default function EditListingScreen({ listing, onNavigate }: EditListingSc
     }));
   };
 
-  const handleAddImage = () => {
-    // For web, we'll simulate adding an image with a placeholder URL
-    // In a real implementation, this would open a file picker
-    const newImageUrl = `https://example.com/farm-image-${Date.now()}.jpg`;
-    
-    if (formData.images.length < 5) {
-      setFormData(prev => ({
-        ...prev,
-        images: [...prev.images, newImageUrl]
-      }));
+  const handleAddImage = async () => {
+    if (!currentUser) {
+      setError('You must be logged in to upload images.');
+      setShowError(true);
+      return;
     }
+
+    if (formData.images.length >= 5) {
+      setError('Maximum 5 images allowed.');
+      setShowError(true);
+      return;
+    }
+
+    // Request permission before opening file picker
+    Alert.alert(
+      'Upload Photo',
+      'This will open your file browser to select a photo. Do you want to continue?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Continue',
+          onPress: async () => {
+            try {
+              // Small delay to ensure the alert is dismissed
+              await new Promise(resolve => setTimeout(resolve, 200));
+              
+              const imageIndex = formData.images.length;
+              setUploadingImages(prev => ({ ...prev, [imageIndex]: true }));
+              
+              // Open file picker
+              const file = await ImageUploadService.selectImageFile();
+              
+              if (!file) {
+                setUploadingImages(prev => ({ ...prev, [imageIndex]: false }));
+                return; // User cancelled
+              }
+
+              // Upload image to Supabase Storage
+              const uploadResult = await ImageUploadService.uploadImage(
+                file,
+                'listings',
+                currentUser.id
+              );
+
+              setUploadingImages(prev => ({ ...prev, [imageIndex]: false }));
+
+              if (!uploadResult.success || !uploadResult.url) {
+                setError(uploadResult.error || 'Failed to upload image. Please try again.');
+                setShowError(true);
+                return;
+              }
+
+              // Add the uploaded image URL to the form data
+              setFormData(prev => ({
+                ...prev,
+                images: [...prev.images, uploadResult.url!]
+              }));
+            } catch (error: any) {
+              const imageIndex = formData.images.length;
+              setUploadingImages(prev => ({ ...prev, [imageIndex]: false }));
+              console.error('Error uploading image:', error);
+              setError('Failed to upload image. Please try again.');
+              setShowError(true);
+            }
+          }
+        }
+      ]
+    );
   };
 
   const handleRemoveImage = (index: number) => {
@@ -343,43 +409,71 @@ export default function EditListingScreen({ listing, onNavigate }: EditListingSc
     }
   };
 
-  const validateForm = () => {
+  const scrollToField = (fieldName: string) => {
+    // Small delay to ensure the error message is set first
+    setTimeout(() => {
+      const fieldRef = fieldRefs.current[fieldName];
+      if (fieldRef && scrollViewRef.current) {
+        // For web, we can use scrollIntoView on the DOM element
+        if (fieldRef.measure) {
+          fieldRef.measure((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
+            scrollViewRef.current?.scrollTo({ y: pageY - 100, animated: true });
+          });
+        } else {
+          // Fallback: try to find the element in the DOM
+          const element = document.getElementById(`field-${fieldName}`);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }
+      }
+    }, 100);
+  };
+
+  const validateForm = (): { valid: boolean; field?: string } => {
     if (!formData.title.trim()) {
       setError('Please enter a farm title.');
       setShowError(true);
-      return false;
+      scrollToField('title');
+      return { valid: false, field: 'title' };
     }
     if (!formData.description.trim()) {
       setError('Please enter a description.');
       setShowError(true);
-      return false;
+      scrollToField('description');
+      return { valid: false, field: 'description' };
     }
     if (!formData.price || parseFloat(formData.price) <= 0) {
       setError('Please enter a valid price per night.');
       setShowError(true);
-      return false;
+      scrollToField('price');
+      return { valid: false, field: 'price' };
     }
     if (!formData.address.trim()) {
       setError('Please enter the farm address.');
       setShowError(true);
-      return false;
+      scrollToField('address');
+      return { valid: false, field: 'address' };
     }
     if (!formData.postcode.trim()) {
       setError('Please enter the postcode.');
       setShowError(true);
-      return false;
+      scrollToField('postcode');
+      return { valid: false, field: 'postcode' };
     }
     if (!formData.county.trim()) {
       setError('Please select a county.');
       setShowError(true);
-      return false;
+      scrollToField('county');
+      return { valid: false, field: 'county' };
     }
     if (formData.amenities.length === 0) {
       setError('Please select at least one amenity.');
       setShowError(true);
-      return false;
+      scrollToField('amenities');
+      return { valid: false, field: 'amenities' };
     }
-    return true;
+    return { valid: true };
   };
 
   const handleSubmit = async () => {
@@ -389,7 +483,9 @@ export default function EditListingScreen({ listing, onNavigate }: EditListingSc
       return;
     }
 
-    if (!validateForm()) {
+    const validation = validateForm();
+    if (!validation.valid) {
+      // Error message and scrolling are handled in validateForm
       return;
     }
 
@@ -540,7 +636,21 @@ export default function EditListingScreen({ listing, onNavigate }: EditListingSc
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView 
+      ref={scrollViewRef}
+      style={styles.container}
+      contentContainerStyle={{ paddingBottom: 100 }}
+    >
+      {/* Error Banner at Top */}
+      {showError && (
+        <View style={styles.errorBanner}>
+          <Text style={styles.errorBannerText}>⚠️ {error}</Text>
+          <TouchableOpacity onPress={() => setShowError(false)}>
+            <Text style={styles.errorBannerClose}>✕</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+      
       <View style={styles.header}>
         {(isAdmin() || isFromAdmin) && (
           <TouchableOpacity onPress={() => onNavigate?.('listing-management')} style={styles.backButton}>
@@ -556,7 +666,7 @@ export default function EditListingScreen({ listing, onNavigate }: EditListingSc
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Basic Information</Text>
         
-        <View style={styles.inputGroup}>
+        <View style={styles.inputGroup} ref={(ref) => { fieldRefs.current['title'] = ref; }} id="field-title">
           <Text style={styles.inputLabel}>Farm Title *</Text>
           <TextInput
             style={styles.textInput}
@@ -568,7 +678,7 @@ export default function EditListingScreen({ listing, onNavigate }: EditListingSc
           />
         </View>
 
-        <View style={styles.inputGroup}>
+        <View style={styles.inputGroup} ref={(ref) => { fieldRefs.current['description'] = ref; }} id="field-description">
           <Text style={styles.inputLabel}>Description *</Text>
           <TextInput
             style={styles.textArea}
@@ -614,10 +724,13 @@ export default function EditListingScreen({ listing, onNavigate }: EditListingSc
             ))}
             {!viewOnly && formData.images.length < 5 && (
               <TouchableOpacity
-                style={styles.addImageButton}
+                style={[styles.addImageButton, uploadingImages[formData.images.length] && styles.addImageButtonDisabled]}
                 onPress={handleAddImage}
+                disabled={uploadingImages[formData.images.length]}
               >
-                <Text style={styles.addImageText}>+ Add Photo</Text>
+                <Text style={styles.addImageText}>
+                  {uploadingImages[formData.images.length] ? 'Uploading...' : '+ Add Photo'}
+                </Text>
               </TouchableOpacity>
             )}
           </View>
@@ -626,7 +739,7 @@ export default function EditListingScreen({ listing, onNavigate }: EditListingSc
           )}
         </View>
 
-        <View style={styles.inputGroup}>
+        <View style={styles.inputGroup} ref={(ref) => { fieldRefs.current['price'] = ref; }} id="field-price">
           <Text style={styles.inputLabel}>Price per Night (£) *</Text>
           <TextInput
             style={styles.textInput}
@@ -641,7 +754,7 @@ export default function EditListingScreen({ listing, onNavigate }: EditListingSc
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Location</Text>
         
-        <View style={styles.inputGroup}>
+        <View style={styles.inputGroup} ref={(ref) => { fieldRefs.current['address'] = ref; }} id="field-address">
           <Text style={styles.inputLabel}>Address *</Text>
           <TextInput
             style={styles.textInput}
@@ -651,7 +764,7 @@ export default function EditListingScreen({ listing, onNavigate }: EditListingSc
           />
         </View>
 
-        <View style={styles.inputGroup}>
+        <View style={styles.inputGroup} ref={(ref) => { fieldRefs.current['postcode'] = ref; }} id="field-postcode">
           <Text style={styles.inputLabel}>Postcode *</Text>
           <TextInput
             style={styles.textInput}
@@ -661,7 +774,7 @@ export default function EditListingScreen({ listing, onNavigate }: EditListingSc
           />
         </View>
 
-        <View style={styles.inputGroup}>
+        <View style={styles.inputGroup} ref={(ref) => { fieldRefs.current['county'] = ref; }} id="field-county">
           <Text style={styles.inputLabel}>County *</Text>
           <select
             style={{
@@ -749,7 +862,7 @@ export default function EditListingScreen({ listing, onNavigate }: EditListingSc
         {renderWildnessRating()}
       </View>
 
-      <View style={styles.card}>
+      <View style={styles.card} ref={(ref) => { fieldRefs.current['amenities'] = ref; }} id="field-amenities">
         <Text style={styles.cardTitle}>Amenities *</Text>
         <Text style={styles.amenitiesDescription}>
           Select all amenities available at your farm
@@ -1424,6 +1537,30 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  errorBanner: {
+    backgroundColor: '#FFEBEE',
+    borderLeftWidth: 4,
+    borderLeftColor: '#F44336',
+    padding: 16,
+    margin: 16,
+    marginBottom: 0,
+    borderRadius: 4,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  errorBannerText: {
+    color: '#C62828',
+    fontSize: 14,
+    fontWeight: '500',
+    flex: 1,
+  },
+  errorBannerClose: {
+    color: '#C62828',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginLeft: 12,
+  },
   errorContainer: {
     backgroundColor: '#FFEBEE',
     margin: 16,
@@ -1620,6 +1757,9 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: 'bold',
+  },
+  addImageButtonDisabled: {
+    opacity: 0.6,
   },
   addImageButton: {
     width: 80,
