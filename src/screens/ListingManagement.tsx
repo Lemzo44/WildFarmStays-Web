@@ -86,20 +86,32 @@ export default function ListingManagement({ onNavigate }: ListingManagementProps
               console.log('Approving listing:', listingId);
               
               // Update both status (for approval workflow) and availability (for operational status)
-              // Use snake_case field names to match database schema
               const updateData = {
                 status: 'approved',
                 availability: 'available'
               };
               
-              // Also ensure we're updating the correct fields
               console.log('Updating listing with:', updateData);
               
-              console.log('Update data:', updateData);
-              
-              const result = await APIService.update('listings', listingId, updateData);
-              
-              console.log('Update result:', result);
+              let result;
+              try {
+                // Try direct update first
+                result = await APIService.update('listings', listingId, updateData);
+                console.log('Update result:', result);
+              } catch (updateError: any) {
+                console.warn('Direct update failed, trying database function:', updateError);
+                // Fallback to database function if direct update fails
+                try {
+                  result = await APIService.rpc('approve_listing', { listing_id_param: listingId });
+                  console.log('Database function result:', result);
+                  if (Array.isArray(result) && result.length > 0) {
+                    result = result[0];
+                  }
+                } catch (rpcError: any) {
+                  console.error('Database function also failed:', rpcError);
+                  throw updateError; // Throw original error
+                }
+              }
               
               // Verify the update by fetching the listing again
               const verifyListing = await APIService.getById('listings', listingId);
@@ -108,6 +120,16 @@ export default function ListingManagement({ onNavigate }: ListingManagementProps
                 status: verifyListing?.status,
                 availability: verifyListing?.availability
               });
+              
+              // Check if update actually worked
+              if (verifyListing && (verifyListing.status !== 'approved' || verifyListing.availability !== 'available')) {
+                console.error('Update verification failed:', {
+                  expected: { status: 'approved', availability: 'available' },
+                  actual: { status: verifyListing.status, availability: verifyListing.availability }
+                });
+                Alert.alert('Warning', 'Listing update may not have persisted correctly. Please refresh and check the database.');
+                return;
+              }
               
               // Reload listings to reflect the change
               await loadListings();

@@ -945,14 +945,58 @@ export default function EditListingScreen({ listing, onNavigate }: EditListingSc
                 const useSupabaseBackend = useSupabase;
                 
                 try {
+                  console.log('Approving listing from EditListingScreen:', listingId);
+                  
                   if (useSupabaseBackend) {
-                    await APIService.update('listings', listingId, {
+                    // Update both status and availability
+                    const updateData = {
                       status: 'approved',
                       availability: 'available'
+                    };
+                    
+                    console.log('Update data:', updateData);
+                    
+                    let result;
+                    try {
+                      // Try direct update first
+                      result = await APIService.update('listings', listingId, updateData);
+                      console.log('Update result:', result);
+                    } catch (updateError: any) {
+                      console.warn('Direct update failed, trying database function:', updateError);
+                      // Fallback to database function if direct update fails
+                      try {
+                        result = await APIService.rpc('approve_listing', { listing_id_param: listingId });
+                        console.log('Database function result:', result);
+                        if (Array.isArray(result) && result.length > 0) {
+                          result = result[0];
+                        }
+                      } catch (rpcError: any) {
+                        console.error('Database function also failed:', rpcError);
+                        throw updateError; // Throw original error
+                      }
+                    }
+                    
+                    // Verify the update by fetching the listing again
+                    const verifyListing = await APIService.getById('listings', listingId);
+                    console.log('Verified listing after update:', {
+                      id: verifyListing?.id,
+                      status: verifyListing?.status,
+                      availability: verifyListing?.availability
                     });
+                    
+                    // Check if update actually worked
+                    if (verifyListing && (verifyListing.status !== 'approved' || verifyListing.availability !== 'available')) {
+                      console.error('Update verification failed:', {
+                        expected: { status: 'approved', availability: 'available' },
+                        actual: { status: verifyListing.status, availability: verifyListing.availability }
+                      });
+                      alert('Warning: Listing update may not have persisted correctly. Please refresh and check the database.');
+                      return;
+                    }
                   } else {
                     const listing = await LocalStorageService.getById('listings', listingId);
                     if (listing) {
+                      listing.status = 'approved';
                       listing.availability = 'available';
                       await LocalStorageService.save('listings', listing);
                     }
@@ -961,7 +1005,13 @@ export default function EditListingScreen({ listing, onNavigate }: EditListingSc
                   onNavigate?.('listing-management');
                 } catch (error: any) {
                   console.error('Error approving listing:', error);
-                  alert(`Failed to approve listing: ${error.message || 'Unknown error'}`);
+                  console.error('Full error details:', {
+                    message: error?.message,
+                    code: error?.code,
+                    details: error?.details,
+                    hint: error?.hint
+                  });
+                  alert(`Failed to approve listing: ${error?.message || error?.error_description || 'Unknown error'}`);
                 }
               }
             }}

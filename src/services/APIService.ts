@@ -287,6 +287,27 @@ export class APIService {
       throw error;
     }
   }
+
+  /**
+   * Call a database function (RPC)
+   */
+  static async rpc<T>(functionName: string, params?: Record<string, any>): Promise<T> {
+    if (!this.shouldUseSupabase() || !supabase) {
+      throw new Error('Supabase not available for RPC calls');
+    }
+
+    try {
+      const { data, error } = await (supabase as any).rpc(functionName, params || {});
+      if (error) {
+        console.error(`Error calling RPC ${functionName}:`, error);
+        throw error;
+      }
+      return data as T;
+    } catch (error) {
+      console.error(`Error in APIService.rpc for ${functionName}:`, error);
+      throw error;
+    }
+  }
 }
 
 
