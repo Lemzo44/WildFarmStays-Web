@@ -121,7 +121,7 @@ function AppContent() {
       case 'home':
         return <HomeScreen onNavigate={handleNavigate} />;
       case 'search':
-        return <SearchScreen />;
+        return <SearchScreen onNavigate={handleNavigate} />;
       case 'listings':
         return <ListingsScreen onNavigate={handleNavigate} />;
       case 'messages':

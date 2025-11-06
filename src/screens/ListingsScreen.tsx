@@ -49,7 +49,8 @@ export default function ListingsScreen({ onNavigate }: ListingsScreenProps = {})
           ...listing,
           farmerId: listing.farmer_id || listing.farmerId,
           maxGuests: listing.max_guests || listing.maxGuests,
-          pricePerNight: listing.price_per_night || listing.price_per_night || listing.price,
+          pricePerNight: listing.price_per_night || listing.price || 0,
+          price: listing.price_per_night || listing.price || 0, // Ensure price field exists for display
           wildnessRating: listing.wildness_rating || listing.wildnessRating,
           parkingLocation: listing.parking_location || listing.parkingLocation,
           cancellationPolicy: listing.cancellation_policy || listing.cancellationPolicy,
@@ -322,7 +323,7 @@ export default function ListingsScreen({ onNavigate }: ListingsScreenProps = {})
           </View>
 
           <View style={styles.priceContainer}>
-            <Text style={styles.price}>£{item.price}</Text>
+            <Text style={styles.price}>£{item.price || item.pricePerNight || 0}</Text>
             <Text style={styles.priceUnit}>/night</Text>
           </View>
 

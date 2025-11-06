@@ -9,7 +9,11 @@ import { ReviewService } from '../services/ReviewService';
 import WebMap from '../components/WebMap';
 import WebMarker from '../components/WebMarker';
 
-export default function SearchScreen() {
+interface SearchScreenProps {
+  onNavigate?: (screen: string, data?: any) => void;
+}
+
+export default function SearchScreen({ onNavigate }: SearchScreenProps = {}) {
   const { currentUser } = useAuth();
   const { theme } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
@@ -114,7 +118,18 @@ export default function SearchScreen() {
 
   const handleMarkerPress = (listing: any) => {
     console.log('Marker pressed:', listing.title);
-    // Navigate to booking screen (would need navigation prop)
+    // Navigate to booking screen
+    onNavigate?.('booking', listing);
+  };
+
+  const handleBookNow = (listing: any) => {
+    // Navigate to booking screen with the listing
+    onNavigate?.('booking', listing);
+  };
+
+  const handleViewAll = () => {
+    // Navigate to listings screen to show all listings
+    onNavigate?.('listings');
   };
 
   const getFilteredListings = () => {
@@ -275,16 +290,20 @@ export default function SearchScreen() {
         ))}
       </WebMap>
 
-      <View style={styles.resultsCard}>
-        <View style={styles.resultsHeader}>
-          <Text style={styles.resultsTitle}>{filteredListings.length} listings found</Text>
-          <TouchableOpacity style={styles.viewAllButton}>
-            <Text style={styles.viewAllButtonText}>View All</Text>
-          </TouchableOpacity>
-        </View>
-        
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.listingsContainer}>
-          {filteredListings.slice(0, 3).map((listing: any) => (
+      {filteredListings.length > 0 && (
+        <View style={styles.resultsCard}>
+          <View style={styles.resultsHeader}>
+            <Text style={styles.resultsTitle}>{filteredListings.length} listings found</Text>
+            <TouchableOpacity 
+              style={styles.viewAllButton}
+              onPress={handleViewAll}
+            >
+              <Text style={styles.viewAllButtonText}>View All</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.listingsContainer}>
+            {filteredListings.slice(0, 3).map((listing: any) => (
             <View key={listing.id} style={styles.listingCard}>
               <View style={styles.listingHeader}>
                 <Text style={styles.listingTitle}>{listing.title}</Text>
@@ -323,18 +342,24 @@ export default function SearchScreen() {
               
               <TouchableOpacity
                 style={styles.bookButton}
-                onPress={() => handleMarkerPress(listing)}
+                onPress={() => handleBookNow(listing)}
               >
                 <Text style={styles.bookButtonText}>Book Now</Text>
               </TouchableOpacity>
             </View>
           ))}
-        </ScrollView>
-      </View>
+          </ScrollView>
+        </View>
+      )}
 
-      <TouchableOpacity style={styles.fab}>
-        <Text style={styles.fabText}>📋 View All Listings</Text>
-      </TouchableOpacity>
+      {filteredListings.length > 0 && (
+        <TouchableOpacity 
+          style={styles.fab}
+          onPress={handleViewAll}
+        >
+          <Text style={styles.fabText}>📋 View All Listings</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
