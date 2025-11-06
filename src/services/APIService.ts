@@ -172,7 +172,7 @@ export class APIService {
       console.log(`Updating ${table}/${id} with:`, updates);
       
       // First, update the record
-      const { data: updateData, error: updateError } = await (supabase as any)
+      const { data: updateData, error: updateError, count } = await (supabase as any)
         .from(table)
         .update(updates as unknown as Record<string, unknown>)
         .eq('id', id)
@@ -190,6 +190,13 @@ export class APIService {
       }
       
       console.log(`Update response for ${table}/${id}:`, updateData);
+      console.log(`Update count:`, count);
+      
+      // Check if update actually affected any rows
+      if (updateData && Array.isArray(updateData) && updateData.length === 0) {
+        console.warn(`Update returned empty array - no rows were updated. This may indicate RLS is blocking the update.`);
+        // Don't throw here - let the caller handle it
+      }
       
       // If updateData is an array, take the first element
       // If it's empty or null, fetch separately

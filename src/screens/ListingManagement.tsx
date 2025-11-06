@@ -94,24 +94,33 @@ export default function ListingManagement({ onNavigate }: ListingManagementProps
               console.log('Updating listing with:', updateData);
               
               let result;
+              // Try database function first (bypasses RLS with SECURITY DEFINER)
               try {
-                // Try direct update first
-                result = await APIService.update('listings', listingId, updateData);
-                console.log('Update result from APIService.update:', result);
-                console.log('Update result status:', result?.status, result?.availability);
-                console.log('Update result keys:', result ? Object.keys(result) : 'null');
-              } catch (updateError: any) {
-                console.warn('Direct update failed, trying database function:', updateError);
-                // Fallback to database function if direct update fails
+                result = await APIService.rpc('approve_listing', { listing_id_param: listingId });
+                console.log('Database function result:', result);
+                if (Array.isArray(result) && result.length > 0) {
+                  result = result[0];
+                } else if (Array.isArray(result) && result.length === 0) {
+                  throw new Error('Database function returned empty array - update may have failed');
+                }
+              } catch (rpcError: any) {
+                console.warn('Database function failed, trying direct update:', rpcError);
+                // Fallback to direct update if function doesn't exist or fails
                 try {
-                  result = await APIService.rpc('approve_listing', { listing_id_param: listingId });
-                  console.log('Database function result:', result);
-                  if (Array.isArray(result) && result.length > 0) {
-                    result = result[0];
+                  result = await APIService.update('listings', listingId, updateData);
+                  console.log('Direct update result:', result);
+                  console.log('Update result status:', result?.status, result?.availability);
+                  console.log('Update result keys:', result ? Object.keys(result) : 'null');
+                  // Check if update actually returned data
+                  if (!result || (Array.isArray(result) && result.length === 0)) {
+                    throw new Error('Update returned empty result - RLS may be blocking the update');
                   }
-                } catch (rpcError: any) {
-                  console.error('Database function also failed:', rpcError);
-                  throw updateError; // Throw original error
+                } catch (updateError: any) {
+                  console.error('Both update methods failed:', {
+                    rpcError: rpcError?.message,
+                    updateError: updateError?.message
+                  });
+                  throw rpcError || updateError; // Throw the most relevant error
                 }
               }
               
