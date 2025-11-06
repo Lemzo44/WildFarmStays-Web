@@ -410,6 +410,7 @@ export default function BookingScreen({ listing, form, onNavigate }: BookingScre
                 border: '1px solid #E0E0E0',
                 borderRadius: '8px',
                 backgroundColor: '#F5F5F5',
+                color: '#333',
                 marginBottom: '8px'
               }}
             />
@@ -434,6 +435,7 @@ export default function BookingScreen({ listing, form, onNavigate }: BookingScre
                 border: '1px solid #E0E0E0',
                 borderRadius: '8px',
                 backgroundColor: '#F5F5F5',
+                color: '#333',
                 marginBottom: '8px'
               }}
             />
