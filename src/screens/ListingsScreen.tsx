@@ -56,8 +56,11 @@ export default function ListingsScreen({ onNavigate }: ListingsScreenProps = {})
           cancellationPolicy: listing.cancellation_policy || listing.cancellationPolicy,
           seasonalHighlights: listing.seasonal_highlights || listing.seasonalHighlights,
           reviewCount: listing.review_count || listing.reviewCount || 0,
+          rejectionReason: listing.rejection_reason || listing.rejectionReason, // Map rejection reason
           // Handle availability/status mapping
-          availability: listing.status === 'approved' || listing.status === 'live' 
+          availability: listing.status === 'rejected' 
+            ? 'rejected' 
+            : listing.status === 'approved' || listing.status === 'live' 
             ? 'available' 
             : listing.availability || 'pending',
         }));
@@ -296,10 +299,10 @@ export default function ListingsScreen({ onNavigate }: ListingsScreenProps = {})
           </View>
           
           {/* Show rejection feedback to farmers for rejected listings */}
-          {item.availability === 'rejected' && item.rejectionReason && isFarmer && (
+          {(item.status === 'rejected' || item.availability === 'rejected') && (item.rejectionReason || item.rejection_reason) && isFarmer && (
             <View style={styles.rejectionBanner}>
               <Text style={styles.rejectionText}>⚠️ Listing Rejected</Text>
-              <Text style={styles.rejectionReason}>Admin feedback: {item.rejectionReason}</Text>
+              <Text style={styles.rejectionReason}>Admin feedback: {item.rejectionReason || item.rejection_reason}</Text>
               <Text style={styles.rejectionHelp}>Please edit this listing to address the issues and resubmit.</Text>
             </View>
           )}
@@ -406,7 +409,7 @@ export default function ListingsScreen({ onNavigate }: ListingsScreenProps = {})
 
           {isFarmer && currentUser && (
             <View style={styles.actionButtons}>
-              {item.availability === 'rejected' ? (
+              {(item.status === 'rejected' || item.availability === 'rejected') ? (
                 <>
                   <TouchableOpacity 
                     style={styles.resubmitButton}
