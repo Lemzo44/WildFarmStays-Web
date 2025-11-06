@@ -324,24 +324,13 @@ export default function EditListingScreen({ listing, onNavigate }: EditListingSc
       return;
     }
 
-    // For web, use window.confirm instead of Alert.alert
-    console.log('Showing confirmation dialog');
-    const shouldContinue = window.confirm(
-      'This will open your file browser to select a photo. Do you want to continue?'
-    );
-
-    if (!shouldContinue) {
-      console.log('User cancelled confirmation');
-      return; // User cancelled
-    }
-
-    console.log('User confirmed, opening file picker');
-
+    // Open file picker directly - must be synchronous to preserve user activation context
+    // The file picker itself requires user interaction, so no confirmation needed
     try {
       const imageIndex = formData.images.length;
       setUploadingImages(prev => ({ ...prev, [imageIndex]: true }));
       
-      // Open file picker
+      // Open file picker immediately while user activation context is still valid
       console.log('Calling ImageUploadService.selectImageFile()');
       const file = await ImageUploadService.selectImageFile();
       console.log('File selected:', file ? file.name : 'null');
