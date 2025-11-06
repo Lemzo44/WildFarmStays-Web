@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { LocalStorageService } from '../services/LocalStorageService';
+import { APIService } from '../services/APIService';
 import { useAuth } from '../contexts/AuthContext';
+import { useSupabase } from '../lib/supabase';
 
 interface AdminDashboardProps {
   onNavigate?: (screen: string, data?: any) => void;
@@ -19,6 +21,8 @@ interface DashboardStats {
   thisMonthRevenue: number;
   newRegistrationsLast7Days: number;
   newRegistrationsLast30Days: number;
+  openTickets: number;
+  newTickets: number;
 }
 
 export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
@@ -35,6 +39,8 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
     thisMonthRevenue: 0,
     newRegistrationsLast7Days: 0,
     newRegistrationsLast30Days: 0,
+    openTickets: 0,
+    newTickets: 0,
   });
 
   useEffect(() => {
@@ -85,6 +91,36 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
         return joinDate >= thirtyDaysAgo;
       }).length;
 
+      // Load support tickets
+      let allTickets: any[] = [];
+      if (useSupabase) {
+        try {
+          allTickets = await APIService.get('support_tickets', {
+            orderBy: { column: 'created_at', ascending: false }
+          });
+        } catch (error) {
+          console.error('Error loading support tickets:', error);
+        }
+      } else {
+        allTickets = await LocalStorageService.getAll('tickets') || [];
+      }
+
+      // Count open tickets (open or in_progress status)
+      const openTickets = allTickets.filter((t: any) => {
+        const status = t.status;
+        return status === 'open' || status === 'in_progress';
+      }).length;
+
+      // Count new tickets (created in last 24 hours)
+      const oneDayAgo = new Date();
+      oneDayAgo.setHours(oneDayAgo.getHours() - 24);
+      const newTickets = allTickets.filter((t: any) => {
+        const createdAt = t.created_at || t.createdAt;
+        if (!createdAt) return false;
+        const ticketDate = new Date(createdAt);
+        return ticketDate >= oneDayAgo && (t.status === 'open' || t.status === 'in_progress');
+      }).length;
+
       setStats({
         totalUsers: users.length,
         totalCampers: campers.length,
@@ -97,6 +133,8 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
         thisMonthRevenue: Math.round(thisMonthRevenue),
         newRegistrationsLast7Days,
         newRegistrationsLast30Days,
+        openTickets,
+        newTickets,
       });
     } catch (error) {
       console.error('Error loading statistics:', error);
@@ -194,6 +232,11 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
           >
             <Text style={styles.actionIcon}>🎫</Text>
             <Text style={styles.actionText}>Support Tickets</Text>
+            {stats.openTickets > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{stats.openTickets}</Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
       </View>
