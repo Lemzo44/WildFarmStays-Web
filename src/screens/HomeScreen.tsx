@@ -98,11 +98,12 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps = {}) {
           // Load favorites from backend (or service fallback)
           const favListings = await FavoritesService.getFavoriteListingsWithDetails(currentUser.id);
           const favDisplay = (favListings || []).map((l: any) => ({
-            id: l.id,
-            farmName: l.title || l.farmName || 'Farm',
-            location: l.location || '',
-            price: l.price || l.price_per_night || 0,
-            rating: l.rating || 0,
+            id: l.listing?.id || l.id || l.listingId,
+            listing: l.listing || l, // Preserve full listing object for navigation
+            farmName: l.listing?.title || l.title || l.farmName || 'Farm',
+            location: l.listing?.location || l.location || '',
+            price: l.listing?.price_per_night || l.listing?.price || l.price || l.price_per_night || 0,
+            rating: l.listing?.rating || l.rating || 0,
           }));
           setFavoriteFarms(favDisplay);
         } catch (e) {
@@ -268,6 +269,16 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps = {}) {
                   <Text style={styles.price}>£{farm.price}/night</Text>
                 </View>
               </View>
+              <TouchableOpacity
+                style={styles.bookAgainButton}
+                onPress={() => {
+                  // Navigate to booking screen with the full listing object
+                  const listingToBook = farm.listing || farm;
+                  onNavigate?.('booking', listingToBook);
+                }}
+              >
+                <Text style={styles.bookAgainButtonText}>Book Again</Text>
+              </TouchableOpacity>
             </View>
           ))}
         </View>
@@ -501,6 +512,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#2E7D32',
+  },
+  bookAgainButton: {
+    backgroundColor: '#2E7D32',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+    marginLeft: 8,
+  },
+  bookAgainButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
   },
   arrowIcon: {
     width: 24,
