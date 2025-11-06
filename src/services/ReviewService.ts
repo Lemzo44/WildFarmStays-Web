@@ -231,6 +231,115 @@ export class ReviewService {
   }
 
   /**
+   * Get a user's review for a specific listing
+   */
+  static async getUserReviewForListing(listingId: string, userId: string): Promise<Review | null> {
+    try {
+      if (useSupabase) {
+        const reviews = await APIService.get('reviews', {
+          filter: { column: 'listing_id', operator: 'eq', value: listingId }
+        });
+        
+        const userReview: any = reviews.find((review: any) => 
+          (review.reviewer_id || review.reviewerId) === userId
+        );
+        
+        if (!userReview) {
+          return null;
+        }
+        
+        return {
+          id: userReview.id,
+          listingId: userReview.listing_id || userReview.listingId,
+          reviewerId: userReview.reviewer_id || userReview.reviewerId,
+          reviewerName: userReview.reviewer_name || userReview.reviewerName || 'Anonymous',
+          rating: userReview.rating,
+          comment: userReview.comment || '',
+          title: userReview.title || undefined,
+          approved: userReview.approved || false,
+          bookingId: userReview.booking_id || userReview.bookingId,
+          images: userReview.images || [],
+          createdAt: userReview.created_at || userReview.createdAt || '',
+          updatedAt: userReview.updated_at || userReview.updatedAt || '',
+        };
+      } else {
+        const allReviews = await LocalStorageService.getAll('reviews');
+        const review = allReviews.find((r: Review) => 
+          r.listingId === listingId && r.reviewerId === userId
+        );
+        return review || null;
+      }
+    } catch (error) {
+      console.error('Error getting user review for listing:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Update an existing review
+   */
+  static async updateReview(reviewId: string, reviewData: Partial<Review>): Promise<Review> {
+    try {
+      if (useSupabase) {
+        // Map to Supabase schema
+        const supabaseUpdateData: any = {};
+        
+        if (reviewData.rating !== undefined) {
+          supabaseUpdateData.rating = reviewData.rating;
+        }
+        if (reviewData.title !== undefined) {
+          supabaseUpdateData.title = reviewData.title || null;
+        }
+        if (reviewData.comment !== undefined) {
+          supabaseUpdateData.comment = reviewData.comment || null;
+        }
+        if ((reviewData as any).images !== undefined) {
+          supabaseUpdateData.images = (reviewData as any).images || [];
+        }
+        if ((reviewData as any).photoUploadApprovedAt !== undefined) {
+          supabaseUpdateData.photo_upload_approved_at = (reviewData as any).photoUploadApprovedAt || null;
+        }
+
+        const updated = await APIService.update('reviews', reviewId, supabaseUpdateData);
+        
+        // Normalize response
+        const row: any = updated;
+        return {
+          id: row.id,
+          listingId: row.listing_id || row.listingId,
+          reviewerId: row.reviewer_id || row.reviewerId,
+          reviewerName: reviewData.reviewerName || 'Anonymous',
+          rating: row.rating,
+          comment: row.comment || '',
+          title: row.title || undefined,
+          approved: row.approved || false,
+          bookingId: row.booking_id || row.bookingId,
+          images: row.images || [],
+          createdAt: row.created_at || row.createdAt || '',
+          updatedAt: row.updated_at || row.updatedAt || new Date().toISOString(),
+        };
+      } else {
+        const existing = await LocalStorageService.getById('reviews', reviewId);
+        if (!existing) {
+          throw new Error('Review not found');
+        }
+        
+        const updated: Review = {
+          ...existing,
+          ...reviewData,
+          updatedAt: new Date().toISOString(),
+        };
+        
+        await LocalStorageService.save('reviews', updated);
+        return updated;
+      }
+    } catch (error: any) {
+      console.error('Error updating review:', error);
+      throw new Error('Failed to update review');
+    }
+  }
+
+  /**
    * Get all reviews by a user
    */
   static async getUserReviews(userId: string): Promise<Review[]> {

@@ -26,6 +26,8 @@ export default function ReviewScreen({ listing, booking, onNavigate }: ReviewScr
   const [uploadingImages, setUploadingImages] = useState<{ [key: number]: boolean }>({});
   const [showImageUploadModal, setShowImageUploadModal] = useState(false);
   const [photoUploadApproved, setPhotoUploadApproved] = useState(false);
+  const [existingReview, setExistingReview] = useState<any>(null);
+  const [isEditing, setIsEditing] = useState(false);
 
   // Mock listing data if not provided
   const mockListing = {
@@ -36,6 +38,39 @@ export default function ReviewScreen({ listing, booking, onNavigate }: ReviewScr
   };
 
   const currentListing = listing || mockListing;
+
+  // Load existing review if user has already reviewed this listing
+  useEffect(() => {
+    const loadExistingReview = async () => {
+      if (currentUser && currentListing.id) {
+        try {
+          const existing = await ReviewService.getUserReviewForListing(
+            currentListing.id,
+            currentUser.id
+          );
+          
+          if (existing) {
+            setExistingReview(existing);
+            setIsEditing(true);
+            // Load existing review data
+            setRating(existing.rating);
+            setTitle(existing.title || '');
+            setComment(existing.comment || '');
+            setImages(existing.images || []);
+            
+            // If images exist, approval was already given
+            if (existing.images && existing.images.length > 0) {
+              setPhotoUploadApproved(true);
+            }
+          }
+        } catch (error) {
+          console.error('Error loading existing review:', error);
+        }
+      }
+    };
+    
+    loadExistingReview();
+  }, [currentUser, currentListing.id]);
 
   // Check if photo upload was already approved (if images already exist)
   useEffect(() => {
@@ -180,27 +215,41 @@ export default function ReviewScreen({ listing, booking, onNavigate }: ReviewScr
     try {
       setLoading(true);
       
-      const reviewData = {
-        listingId: currentListing.id,
-        reviewerId: currentUser.id,
-        rating,
-        title: title.trim(),
-        comment: comment.trim(),
-        images: images.length > 0 ? images : undefined,
-        createdAt: new Date().toISOString(),
-        // If images exist, set photo upload approval timestamp
-        photoUploadApprovedAt: images.length > 0 ? new Date().toISOString() : undefined,
-      };
-
-      const result = await ReviewService.createReview(reviewData);
-      
-      if (result.success) {
-        // Show success message and navigate back
-        alert('Review submitted successfully!');
+      // If editing existing review, update it; otherwise create new
+      if (isEditing && existingReview) {
+        // Update existing review
+        const updateData: any = {
+          rating,
+          title: title.trim(),
+          comment: comment.trim(),
+          images: images.length > 0 ? images : [],
+        };
+        
+        // If images exist and approval wasn't set before, set it now
+        if (images.length > 0 && !existingReview.photo_upload_approved_at && !existingReview.photoUploadApprovedAt) {
+          updateData.photoUploadApprovedAt = new Date().toISOString();
+        }
+        
+        await ReviewService.updateReview(existingReview.id, updateData);
+        alert('Review updated successfully!');
         onNavigate?.('home');
       } else {
-        setError(result.message || 'Failed to submit review');
-        setShowError(true);
+        // Create new review
+        const reviewData = {
+          listingId: currentListing.id,
+          reviewerId: currentUser.id,
+          rating,
+          title: title.trim(),
+          comment: comment.trim(),
+          images: images.length > 0 ? images : undefined,
+          createdAt: new Date().toISOString(),
+          // If images exist, set photo upload approval timestamp
+          photoUploadApprovedAt: images.length > 0 ? new Date().toISOString() : undefined,
+        };
+
+        await ReviewService.createReview(reviewData);
+        alert('Review submitted successfully!');
+        onNavigate?.('home');
       }
     } catch (error: any) {
       console.error('Error submitting review:', error);
@@ -213,8 +262,16 @@ export default function ReviewScreen({ listing, booking, onNavigate }: ReviewScr
 
   return (
     <ScrollView style={styles.container}>
+      {isEditing && existingReview && (
+        <View style={styles.editBanner}>
+          <Text style={styles.editBannerText}>
+            📝 Editing your existing review. You can update your rating, comment, or add photos.
+          </Text>
+        </View>
+      )}
+      
       <View style={styles.header}>
-        <Text style={styles.title}>Write a Review</Text>
+        <Text style={styles.title}>{isEditing ? 'Edit Your Review' : 'Write a Review'}</Text>
         <Text style={styles.subtitle}>
           Share your experience at {currentListing.title}
         </Text>
@@ -324,7 +381,7 @@ export default function ReviewScreen({ listing, booking, onNavigate }: ReviewScr
           disabled={loading}
         >
           <Text style={styles.submitButtonText}>
-            {loading ? 'Submitting...' : 'Submit Review'}
+            {loading ? (isEditing ? 'Updating...' : 'Submitting...') : (isEditing ? 'Update Review' : 'Submit Review')}
           </Text>
         </TouchableOpacity>
         
@@ -362,6 +419,20 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F5F5F5',
+  },
+  editBanner: {
+    backgroundColor: '#E3F2FD',
+    borderLeftWidth: 4,
+    borderLeftColor: '#1976D2',
+    padding: 16,
+    margin: 16,
+    marginBottom: 0,
+    borderRadius: 4,
+  },
+  editBannerText: {
+    color: '#1565C0',
+    fontSize: 14,
+    fontWeight: '500',
   },
   header: {
     padding: 20,
