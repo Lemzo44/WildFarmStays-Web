@@ -308,76 +308,79 @@ export default function EditListingScreen({ listing, onNavigate }: EditListingSc
   };
 
   const handleAddImage = async () => {
+    console.log('handleAddImage called');
+    
     if (!currentUser) {
+      console.log('No current user');
       setError('You must be logged in to upload images.');
       setShowError(true);
       return;
     }
 
     if (formData.images.length >= 5) {
+      console.log('Maximum images reached');
       setError('Maximum 5 images allowed.');
       setShowError(true);
       return;
     }
 
-    // Request permission before opening file picker
-    Alert.alert(
-      'Upload Photo',
-      'This will open your file browser to select a photo. Do you want to continue?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Continue',
-          onPress: async () => {
-            try {
-              // Small delay to ensure the alert is dismissed
-              await new Promise(resolve => setTimeout(resolve, 200));
-              
-              const imageIndex = formData.images.length;
-              setUploadingImages(prev => ({ ...prev, [imageIndex]: true }));
-              
-              // Open file picker
-              const file = await ImageUploadService.selectImageFile();
-              
-              if (!file) {
-                setUploadingImages(prev => ({ ...prev, [imageIndex]: false }));
-                return; // User cancelled
-              }
-
-              // Upload image to Supabase Storage
-              const uploadResult = await ImageUploadService.uploadImage(
-                file,
-                'listings',
-                currentUser.id
-              );
-
-              setUploadingImages(prev => ({ ...prev, [imageIndex]: false }));
-
-              if (!uploadResult.success || !uploadResult.url) {
-                setError(uploadResult.error || 'Failed to upload image. Please try again.');
-                setShowError(true);
-                return;
-              }
-
-              // Add the uploaded image URL to the form data
-              setFormData(prev => ({
-                ...prev,
-                images: [...prev.images, uploadResult.url!]
-              }));
-            } catch (error: any) {
-              const imageIndex = formData.images.length;
-              setUploadingImages(prev => ({ ...prev, [imageIndex]: false }));
-              console.error('Error uploading image:', error);
-              setError('Failed to upload image. Please try again.');
-              setShowError(true);
-            }
-          }
-        }
-      ]
+    // For web, use window.confirm instead of Alert.alert
+    console.log('Showing confirmation dialog');
+    const shouldContinue = window.confirm(
+      'This will open your file browser to select a photo. Do you want to continue?'
     );
+
+    if (!shouldContinue) {
+      console.log('User cancelled confirmation');
+      return; // User cancelled
+    }
+
+    console.log('User confirmed, opening file picker');
+
+    try {
+      const imageIndex = formData.images.length;
+      setUploadingImages(prev => ({ ...prev, [imageIndex]: true }));
+      
+      // Open file picker
+      console.log('Calling ImageUploadService.selectImageFile()');
+      const file = await ImageUploadService.selectImageFile();
+      console.log('File selected:', file ? file.name : 'null');
+      
+      if (!file) {
+        console.log('No file selected, cancelling upload');
+        setUploadingImages(prev => ({ ...prev, [imageIndex]: false }));
+        return; // User cancelled file selection
+      }
+
+      // Upload image to Supabase Storage
+      console.log('Uploading image to Supabase Storage...');
+      const uploadResult = await ImageUploadService.uploadImage(
+        file,
+        'listings',
+        currentUser.id
+      );
+      console.log('Upload result:', uploadResult);
+
+      setUploadingImages(prev => ({ ...prev, [imageIndex]: false }));
+
+      if (!uploadResult.success || !uploadResult.url) {
+        setError(uploadResult.error || 'Failed to upload image. Please try again.');
+        setShowError(true);
+        return;
+      }
+
+      // Add the uploaded image URL to the form data
+      setFormData(prev => ({
+        ...prev,
+        images: [...prev.images, uploadResult.url!]
+      }));
+    } catch (error: any) {
+      const imageIndex = formData.images.length;
+      setUploadingImages(prev => ({ ...prev, [imageIndex]: false }));
+      console.error('Error uploading image:', error);
+      setError('Failed to upload image. Please try again.');
+      setShowError(true);
+    }
   };
 
   const handleRemoveImage = (index: number) => {
