@@ -178,13 +178,23 @@ export class APIService {
 
       if (error) {
         console.error(`Error updating ${table}:`, error);
+        // Don't fallback to localStorage when Supabase is enabled - propagate the error
         throw error;
       }
 
+      if (!data) {
+        throw new Error(`Record not found: ${table}/${id}`);
+      }
+
       return data as T;
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Error in APIService.update for ${table}:`, error);
-      // Fallback to localStorage
+      // When Supabase is enabled, don't fallback to localStorage
+      // This ensures RLS errors are properly reported
+      if (this.shouldUseSupabase()) {
+        throw error;
+      }
+      // Only fallback to localStorage if Supabase is not enabled
       const existing = await LocalStorageService.getById(table, id);
       if (!existing) {
         throw new Error(`Record not found: ${table}/${id}`);

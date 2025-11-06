@@ -83,23 +83,22 @@ export default function ListingManagement({ onNavigate }: ListingManagementProps
           text: 'Approve',
           onPress: async () => {
             try {
-              const listing = await APIService.getById('listings', listingId);
-              if (listing) {
-                // Update both status (for approval workflow) and availability (for operational status)
-                await APIService.update('listings', listingId, {
-                  status: 'approved',
-                  availability: 'available'
-                });
-                
-                Alert.alert('Success', 'Listing approved successfully', [
-                  { text: 'OK', onPress: () => onNavigate?.('admin-dashboard') }
-                ]);
-              } else {
-                Alert.alert('Error', 'Listing not found');
-              }
+              // Update both status (for approval workflow) and availability (for operational status)
+              await APIService.update('listings', listingId, {
+                status: 'approved',
+                availability: 'available'
+              });
+              
+              // Reload listings to reflect the change
+              await loadListings();
+              
+              Alert.alert('Success', 'Listing approved successfully', [
+                { text: 'OK' }
+              ]);
             } catch (error: any) {
               console.error('Error approving listing:', error);
-              Alert.alert('Error', `Failed to approve listing: ${error.message || 'Unknown error'}`);
+              const errorMessage = error?.message || error?.error_description || 'Unknown error';
+              Alert.alert('Error', `Failed to approve listing: ${errorMessage}`);
             }
           }
         }

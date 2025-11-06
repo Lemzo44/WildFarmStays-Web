@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { LocalStorageService } from '../services/LocalStorageService';
@@ -65,30 +65,43 @@ export default function EditListingScreen({ listing, onNavigate }: EditListingSc
   const viewOnly = listing?.viewOnly || false;
 
   useEffect(() => {
+    // Normalize images - handle both array and single string, and ensure URLs are valid
+    let normalizedImages: string[] = [];
+    if (Array.isArray(currentListing.images)) {
+      normalizedImages = currentListing.images.filter((img: any) => img && typeof img === 'string');
+    } else if (currentListing.images && typeof currentListing.images === 'string') {
+      normalizedImages = [currentListing.images];
+    }
+    
+    // Log for debugging
+    if (viewOnly && normalizedImages.length > 0) {
+      console.log('Admin viewing listing images:', normalizedImages);
+    }
+    
     // Populate form with existing listing data
     setFormData({
       title: currentListing.title || '',
       description: currentListing.description || '',
-      price: currentListing.price?.toString() || '',
+      price: currentListing.price?.toString() || currentListing.price_per_night?.toString() || '',
       address: currentListing.address || '',
       postcode: currentListing.postcode || '',
       county: currentListing.county || '',
       location: currentListing.location || '',
-      parkingLocation: currentListing.parkingLocation || '',
-      cancellationPolicy: currentListing.cancellationPolicy || '',
-      coordinates: currentListing.coordinates || null,
+      parkingLocation: currentListing.parkingLocation || currentListing.parking_location || '',
+      cancellationPolicy: currentListing.cancellationPolicy || currentListing.cancellation_policy || '',
+      coordinates: currentListing.coordinates || (currentListing.latitude && currentListing.longitude ? { latitude: currentListing.latitude, longitude: currentListing.longitude } : null),
       amenities: currentListing.amenities || [],
       restrictions: currentListing.restrictions || [],
-      seasonalHighlights: currentListing.seasonalHighlights || [],
-      wildnessRating: currentListing.wildnessRating || 3,
-      maxGuests: currentListing.maxGuests || 4,
-      images: currentListing.images || [],
+      seasonalHighlights: currentListing.seasonalHighlights || currentListing.seasonal_highlights || [],
+      wildnessRating: currentListing.wildnessRating || currentListing.wildness_rating || 3,
+      maxGuests: currentListing.maxGuests || currentListing.max_guests || 4,
+      images: normalizedImages,
       availableDays: currentListing.availableDays || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
       checkInTime: currentListing.checkInTime || '14:00',
       checkOutTime: currentListing.checkOutTime || '11:00',
       blackoutDates: currentListing.blackoutDates || [],
     });
-  }, [currentListing]);
+  }, [currentListing, viewOnly]);
 
   const availableAmenities = [
     'Drinking water',
@@ -578,18 +591,28 @@ export default function EditListingScreen({ listing, onNavigate }: EditListingSc
           <View style={styles.imageContainer}>
             {formData.images.map((image, index) => (
               <View key={index} style={styles.imageWrapper}>
-                <View style={styles.imagePlaceholder}>
-                  <Text style={styles.imageText}>📷 Image {index + 1}</Text>
-                </View>
-                <TouchableOpacity
-                  style={styles.removeImageButton}
-                  onPress={() => handleRemoveImage(index)}
-                >
-                  <Text style={styles.removeImageText}>✕</Text>
-                </TouchableOpacity>
+                {image && (image.startsWith('http') || image.startsWith('https')) ? (
+                  <Image
+                    source={{ uri: image }}
+                    style={viewOnly ? styles.imagePreviewLarge : styles.imagePreview}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View style={styles.imagePlaceholder}>
+                    <Text style={styles.imageText}>📷 Image {index + 1}</Text>
+                  </View>
+                )}
+                {!viewOnly && (
+                  <TouchableOpacity
+                    style={styles.removeImageButton}
+                    onPress={() => handleRemoveImage(index)}
+                  >
+                    <Text style={styles.removeImageText}>✕</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             ))}
-            {formData.images.length < 5 && (
+            {!viewOnly && formData.images.length < 5 && (
               <TouchableOpacity
                 style={styles.addImageButton}
                 onPress={handleAddImage}
@@ -598,6 +621,9 @@ export default function EditListingScreen({ listing, onNavigate }: EditListingSc
               </TouchableOpacity>
             )}
           </View>
+          {viewOnly && formData.images.length === 0 && (
+            <Text style={styles.noImagesText}>No photos uploaded</Text>
+          )}
         </View>
 
         <View style={styles.inputGroup}>
@@ -1451,6 +1477,27 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#2E7D32',
+  },
+  imagePreview: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#2E7D32',
+  },
+  imagePreviewLarge: {
+    width: 150,
+    height: 150,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#2E7D32',
+    marginBottom: 8,
+  },
+  noImagesText: {
+    fontSize: 14,
+    color: '#999',
+    fontStyle: 'italic',
+    marginTop: 8,
   },
   imageText: {
     fontSize: 12,

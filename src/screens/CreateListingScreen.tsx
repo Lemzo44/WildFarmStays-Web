@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, Alert } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { LocalStorageService } from '../services/LocalStorageService';
@@ -253,44 +253,63 @@ export default function CreateListingScreen({ onNavigate }: CreateListingScreenP
       return;
     }
 
-    try {
-      // Open file picker
-      const file = await ImageUploadService.selectImageFile();
-      
-      if (!file) {
-        return; // User cancelled
-      }
+    // Request permission before opening file picker
+    Alert.alert(
+      'Upload Photo',
+      'This will open your file browser to select a photo. Do you want to continue?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Continue',
+          onPress: async () => {
+            try {
+              // Small delay to ensure the alert is dismissed
+              await new Promise(resolve => setTimeout(resolve, 200));
+              
+              // Open file picker (this requires user interaction - button click)
+              const file = await ImageUploadService.selectImageFile();
+              
+              if (!file) {
+                return; // User cancelled
+              }
 
-      const imageIndex = formData.images.length;
-      setUploadingImages(prev => ({ ...prev, [imageIndex]: true }));
+              const imageIndex = formData.images.length;
+              setUploadingImages(prev => ({ ...prev, [imageIndex]: true }));
 
-      // Upload image
-      const result = await ImageUploadService.uploadImage(
-        file,
-        'listings',
-        currentUser.id
-      );
+              // Upload image
+              const result = await ImageUploadService.uploadImage(
+                file,
+                'listings',
+                currentUser.id
+              );
 
-      if (result.success && result.url) {
-        setFormData(prev => ({
-          ...prev,
-          images: [...prev.images, result.url!]
-        }));
-      } else {
-        setError(result.error || 'Failed to upload image');
-        setShowError(true);
-      }
-    } catch (error: any) {
-      console.error('Error adding image:', error);
-      setError('Failed to upload image. Please try again.');
-      setShowError(true);
-    } finally {
-      setUploadingImages(prev => {
-        const updated = { ...prev };
-        delete updated[formData.images.length];
-        return updated;
-      });
-    }
+              if (result.success && result.url) {
+                setFormData(prev => ({
+                  ...prev,
+                  images: [...prev.images, result.url!]
+                }));
+              } else {
+                setError(result.error || 'Failed to upload image');
+                setShowError(true);
+              }
+            } catch (error: any) {
+              console.error('Error adding image:', error);
+              setError('Failed to upload image. Please try again.');
+              setShowError(true);
+            } finally {
+              setUploadingImages(prev => {
+                const updated = { ...prev };
+                delete updated[formData.images.length];
+                return updated;
+              });
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleRemoveImage = (index: number) => {
