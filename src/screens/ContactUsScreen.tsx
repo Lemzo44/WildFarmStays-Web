@@ -140,9 +140,17 @@ export default function ContactUsScreen({ onNavigate }: ContactUsScreenProps) {
                 console.warn('Email notification failed (non-critical):', emailError);
               }
             }
-          } catch (error) {
+          } catch (error: any) {
             console.error('Error creating public contact message:', error);
-            throw error; // Re-throw to show error to user
+            // Provide more detailed error message
+            const errorMessage = error?.message || error?.error_description || 'Failed to send message. Please try again.';
+            console.error('Full error details:', {
+              message: errorMessage,
+              code: error?.code,
+              details: error?.details,
+              hint: error?.hint,
+            });
+            throw new Error(errorMessage);
           }
         } else {
           // Fallback to localStorage for development
@@ -180,9 +188,19 @@ export default function ContactUsScreen({ onNavigate }: ContactUsScreenProps) {
           : 'Thank you for contacting us. Your message has been received and we will get back to you as soon as possible.',
         [{ text: 'OK' }]
       );
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error submitting contact form:', error);
-      Alert.alert('Error', 'Failed to send message. Please try again.');
+      const errorMessage = error?.message || 'Failed to send message. Please try again.';
+      
+      // Check for specific RLS errors
+      if (errorMessage.includes('row-level security') || errorMessage.includes('RLS') || errorMessage.includes('policy')) {
+        Alert.alert(
+          'Error', 
+          'Unable to send message. Please ensure the database permissions are configured correctly. Error: ' + errorMessage
+        );
+      } else {
+        Alert.alert('Error', errorMessage);
+      }
     } finally {
       setIsSubmitting(false);
     }
