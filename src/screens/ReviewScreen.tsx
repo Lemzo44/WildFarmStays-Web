@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { ReviewService } from '../services/ReviewService';
 import { ImageUploadService } from '../services/ImageUploadService';
+import ImageUploadConfirmationModal from '../components/ImageUploadConfirmationModal';
 
 interface ReviewScreenProps {
   listing?: any;
@@ -23,6 +24,7 @@ export default function ReviewScreen({ listing, booking, onNavigate }: ReviewScr
   const [error, setError] = useState('');
   const [showError, setShowError] = useState(false);
   const [uploadingImages, setUploadingImages] = useState<{ [key: number]: boolean }>({});
+  const [showImageUploadModal, setShowImageUploadModal] = useState(false);
 
   // Mock listing data if not provided
   const mockListing = {
@@ -49,7 +51,7 @@ export default function ReviewScreen({ listing, booking, onNavigate }: ReviewScr
     }
   };
 
-  const handleAddImage = async () => {
+  const handleAddImage = () => {
     if (!currentUser) {
       setError('You must be logged in to upload images.');
       setShowError(true);
@@ -62,60 +64,55 @@ export default function ReviewScreen({ listing, booking, onNavigate }: ReviewScr
       return;
     }
 
-    // Request permission before opening file picker
-    Alert.alert(
-      'Upload Photo',
-      'This will open your file browser to select a photo. Do you want to continue?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Continue',
-          onPress: async () => {
-            try {
-              // Small delay to ensure the alert is dismissed
-              await new Promise(resolve => setTimeout(resolve, 200));
-              
-              // Open file picker
-              const file = await ImageUploadService.selectImageFile();
-              
-              if (!file) {
-                return; // User cancelled
-              }
+    // Show confirmation modal
+    setShowImageUploadModal(true);
+  };
 
-              const imageIndex = images.length;
-              setUploadingImages(prev => ({ ...prev, [imageIndex]: true }));
+  const handleConfirmImageUpload = async () => {
+    // Close modal first
+    setShowImageUploadModal(false);
+    
+    // Immediately open file picker - this preserves user activation context
+    try {
+      const imageIndex = images.length;
+      setUploadingImages(prev => ({ ...prev, [imageIndex]: true }));
 
-              // Upload image
-              const result = await ImageUploadService.uploadImage(
-                file,
-                'reviews',
-                currentUser.id
-              );
+      // Open file picker immediately while user activation context is still valid
+      const file = await ImageUploadService.selectImageFile();
+      
+      if (!file) {
+        setUploadingImages(prev => {
+          const updated = { ...prev };
+          delete updated[imageIndex];
+          return updated;
+        });
+        return; // User cancelled
+      }
 
-              if (result.success && result.url) {
-                setImages(prev => [...prev, result.url!]);
-              } else {
-                setError(result.error || 'Failed to upload image');
-                setShowError(true);
-              }
-            } catch (error: any) {
-              console.error('Error adding image:', error);
-              setError('Failed to upload image. Please try again.');
-              setShowError(true);
-            } finally {
-              setUploadingImages(prev => {
-                const updated = { ...prev };
-                delete updated[images.length];
-                return updated;
-              });
-            }
-          },
-        },
-      ]
-    );
+      // Upload image
+      const result = await ImageUploadService.uploadImage(
+        file,
+        'reviews',
+        currentUser!.id
+      );
+
+      if (result.success && result.url) {
+        setImages(prev => [...prev, result.url!]);
+      } else {
+        setError(result.error || 'Failed to upload image');
+        setShowError(true);
+      }
+    } catch (error: any) {
+      console.error('Error adding image:', error);
+      setError('Failed to upload image. Please try again.');
+      setShowError(true);
+    } finally {
+      setUploadingImages(prev => {
+        const updated = { ...prev };
+        delete updated[images.length];
+        return updated;
+      });
+    }
   };
 
   const renderStars = () => {
@@ -327,6 +324,15 @@ export default function ReviewScreen({ listing, booking, onNavigate }: ReviewScr
           </TouchableOpacity>
         </View>
       )}
+
+      {/* Image Upload Confirmation Modal */}
+      <ImageUploadConfirmationModal
+        visible={showImageUploadModal}
+        onConfirm={handleConfirmImageUpload}
+        onCancel={() => setShowImageUploadModal(false)}
+        maxImages={3}
+        context="review"
+      />
     </ScrollView>
   );
 }

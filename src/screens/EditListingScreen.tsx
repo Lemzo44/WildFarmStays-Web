@@ -6,6 +6,7 @@ import { LocalStorageService } from '../services/LocalStorageService';
 import { APIService } from '../services/APIService';
 import { useSupabase } from '../lib/supabase';
 import { ImageUploadService } from '../services/ImageUploadService';
+import ImageUploadConfirmationModal from '../components/ImageUploadConfirmationModal';
 
 interface EditListingScreenProps {
   listing?: any;
@@ -45,6 +46,7 @@ export default function EditListingScreen({ listing, onNavigate }: EditListingSc
   const [selectedStartDate, setSelectedStartDate] = useState('');
   const [selectedEndDate, setSelectedEndDate] = useState('');
   const [uploadingImages, setUploadingImages] = useState<{ [key: number]: boolean }>({});
+  const [showImageUploadModal, setShowImageUploadModal] = useState(false);
   
   // Refs for scrolling to fields with errors
   const scrollViewRef = useRef<ScrollView>(null);
@@ -307,48 +309,47 @@ export default function EditListingScreen({ listing, onNavigate }: EditListingSc
     }));
   };
 
-  const handleAddImage = async () => {
-    console.log('handleAddImage called');
-    
+  const handleAddImage = () => {
     if (!currentUser) {
-      console.log('No current user');
       setError('You must be logged in to upload images.');
       setShowError(true);
       return;
     }
 
     if (formData.images.length >= 5) {
-      console.log('Maximum images reached');
       setError('Maximum 5 images allowed.');
       setShowError(true);
       return;
     }
 
-    // Open file picker directly - must be synchronous to preserve user activation context
-    // The file picker itself requires user interaction, so no confirmation needed
+    // Show confirmation modal
+    setShowImageUploadModal(true);
+  };
+
+  const handleConfirmImageUpload = async () => {
+    // Close modal first
+    setShowImageUploadModal(false);
+    
+    // Immediately open file picker - this preserves user activation context
+    // because the modal button click is still part of the user interaction chain
     try {
       const imageIndex = formData.images.length;
       setUploadingImages(prev => ({ ...prev, [imageIndex]: true }));
       
       // Open file picker immediately while user activation context is still valid
-      console.log('Calling ImageUploadService.selectImageFile()');
       const file = await ImageUploadService.selectImageFile();
-      console.log('File selected:', file ? file.name : 'null');
       
       if (!file) {
-        console.log('No file selected, cancelling upload');
         setUploadingImages(prev => ({ ...prev, [imageIndex]: false }));
         return; // User cancelled file selection
       }
 
       // Upload image to Supabase Storage
-      console.log('Uploading image to Supabase Storage...');
       const uploadResult = await ImageUploadService.uploadImage(
         file,
         'listings',
-        currentUser.id
+        currentUser!.id
       );
-      console.log('Upload result:', uploadResult);
 
       setUploadingImages(prev => ({ ...prev, [imageIndex]: false }));
 
@@ -1268,6 +1269,15 @@ export default function EditListingScreen({ listing, onNavigate }: EditListingSc
           </TouchableOpacity>
         </View>
       )}
+
+      {/* Image Upload Confirmation Modal */}
+      <ImageUploadConfirmationModal
+        visible={showImageUploadModal}
+        onConfirm={handleConfirmImageUpload}
+        onCancel={() => setShowImageUploadModal(false)}
+        maxImages={5}
+        context="listing"
+      />
     </ScrollView>
   );
 }
