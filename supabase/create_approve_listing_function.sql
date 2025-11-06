@@ -12,23 +12,23 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 BEGIN
-  -- Update the listing
+  -- Update the listing (explicitly qualify the column name)
   UPDATE public.listings
   SET 
     status = 'approved',
     availability = 'available',
     updated_at = NOW()
-  WHERE id = listing_id_param;
+  WHERE public.listings.id = listing_id_param;
   
-  -- Return the updated record
+  -- Return the updated record (explicitly qualify all column names)
   RETURN QUERY
   SELECT 
-    l.id,
-    l.status::VARCHAR,
-    l.availability::VARCHAR,
-    l.updated_at
-  FROM public.listings l
-  WHERE l.id = listing_id_param;
+    public.listings.id,
+    public.listings.status::VARCHAR,
+    public.listings.availability::VARCHAR,
+    public.listings.updated_at
+  FROM public.listings
+  WHERE public.listings.id = listing_id_param;
 END;
 $$;
 
