@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert 
 import { LocalStorageService } from '../services/LocalStorageService';
 import { APIService } from '../services/APIService';
 import { useAuth } from '../contexts/AuthContext';
-import { useSupabase } from '../lib/supabase';
+import { useSupabase, supabase } from '../lib/supabase';
 import { messageEmailWebhook } from '../lib/config';
 
 interface ContactUsScreenProps {
@@ -103,18 +103,54 @@ export default function ContactUsScreen({ onNavigate }: ContactUsScreenProps) {
         // This allows admin to view and respond to public contact messages
         if (useSupabase) {
           try {
-            const contactData = {
-              user_id: null, // NULL indicates public (non-logged-in) contact
-              name: formData.name,
-              email: formData.email,
-              subject: formData.subject || 'Public Contact Inquiry',
-              message: formData.message + (formData.phone ? `\n\nPhone: ${formData.phone}` : ''),
-              status: 'open',
-            };
+            // Try using the database function first (more reliable for anonymous users)
+            if (supabase) {
+              try {
+                console.log('Attempting to create public contact via function:', {
+                  name: formData.name,
+                  email: formData.email,
+                  subject: formData.subject || 'Public Contact Inquiry',
+                  message: formData.message,
+                  phone: formData.phone || null,
+                });
 
-            console.log('Creating public contact message:', contactData);
-            const result = await APIService.create('support_tickets', contactData);
-            console.log('Public contact message created successfully:', result);
+                const { data: functionResult, error: functionError } = await (supabase.rpc as any)(
+                  'create_public_contact_ticket',
+                  {
+                    p_name: formData.name,
+                    p_email: formData.email,
+                    p_subject: formData.subject || 'Public Contact Inquiry',
+                    p_message: formData.message,
+                    p_phone: formData.phone || null,
+                  }
+                );
+
+                if (functionError) {
+                  console.warn('Function call failed, trying direct insert:', functionError);
+                  throw functionError; // Will fall through to direct insert
+                }
+
+                console.log('Public contact message created successfully via function:', functionResult);
+              } catch (functionError: any) {
+                // Fall back to direct insert if function doesn't exist or fails
+                console.log('Function not available or failed, using direct insert');
+                
+                const contactData = {
+                  user_id: null, // NULL indicates public (non-logged-in) contact
+                  name: formData.name,
+                  email: formData.email,
+                  subject: formData.subject || 'Public Contact Inquiry',
+                  message: formData.message + (formData.phone ? `\n\nPhone: ${formData.phone}` : ''),
+                  status: 'open',
+                };
+
+                console.log('Creating public contact message via direct insert:', contactData);
+                const result = await APIService.create('support_tickets', contactData);
+                console.log('Public contact message created successfully:', result);
+              }
+            } else {
+              throw new Error('Supabase client not initialized');
+            }
             
             // Also send email notification to admin (optional)
             if (messageEmailWebhook) {
