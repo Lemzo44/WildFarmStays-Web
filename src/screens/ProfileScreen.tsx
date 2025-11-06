@@ -133,12 +133,14 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onNavigate }) => {
                 <TextInput
                   style={styles.input}
                   placeholder="First Name"
+                  placeholderTextColor="#999"
                   value={firstName}
                   onChangeText={setFirstName}
                 />
                 <TextInput
                   style={styles.input}
                   placeholder="Last Name"
+                  placeholderTextColor="#999"
                   value={lastName}
                   onChangeText={setLastName}
                 />
@@ -167,6 +169,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onNavigate }) => {
             <TextInput
               style={styles.input}
               placeholder="Phone"
+              placeholderTextColor="#999"
               value={phone}
               onChangeText={setPhone}
             />
@@ -175,18 +178,21 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onNavigate }) => {
                 <TextInput
                   style={styles.input}
                   placeholder="Farm Name"
+                  placeholderTextColor="#999"
                   value={farmName}
                   onChangeText={setFarmName}
                 />
                 <TextInput
                   style={styles.input}
                   placeholder="Farm Address"
+                  placeholderTextColor="#999"
                   value={farmAddress}
                   onChangeText={setFarmAddress}
                 />
                 <TextInput
                   style={styles.input}
                   placeholder="Postcode"
+                  placeholderTextColor="#999"
                   value={postcode}
                   onChangeText={setPostcode}
                 />
@@ -567,6 +573,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E0E0E0',
     marginTop: 8,
+    color: '#333',
   },
   primaryButton: {
     backgroundColor: '#2E7D32',

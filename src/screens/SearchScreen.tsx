@@ -351,15 +351,6 @@ export default function SearchScreen({ onNavigate }: SearchScreenProps = {}) {
           </ScrollView>
         </View>
       )}
-
-      {filteredListings.length > 0 && (
-        <TouchableOpacity 
-          style={styles.fab}
-          onPress={handleViewAll}
-        >
-          <Text style={styles.fabText}>📋 View All Listings</Text>
-        </TouchableOpacity>
-      )}
     </View>
   );
 }
@@ -559,25 +550,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   bookButtonText: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  fab: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
-    backgroundColor: '#2E7D32',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 6,
-  },
-  fabText: {
     color: '#FFFFFF',
     fontWeight: 'bold',
     fontSize: 14,
