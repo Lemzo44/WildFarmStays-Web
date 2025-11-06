@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, Alert } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -25,6 +25,7 @@ export default function ReviewScreen({ listing, booking, onNavigate }: ReviewScr
   const [showError, setShowError] = useState(false);
   const [uploadingImages, setUploadingImages] = useState<{ [key: number]: boolean }>({});
   const [showImageUploadModal, setShowImageUploadModal] = useState(false);
+  const [photoUploadApproved, setPhotoUploadApproved] = useState(false);
 
   // Mock listing data if not provided
   const mockListing = {
@@ -35,6 +36,13 @@ export default function ReviewScreen({ listing, booking, onNavigate }: ReviewScr
   };
 
   const currentListing = listing || mockListing;
+
+  // Check if photo upload was already approved (if images already exist)
+  useEffect(() => {
+    if (images.length > 0) {
+      setPhotoUploadApproved(true);
+    }
+  }, [images]);
 
   const handleRatingPress = (selectedRating: number) => {
     setRating(selectedRating);
@@ -64,13 +72,24 @@ export default function ReviewScreen({ listing, booking, onNavigate }: ReviewScr
       return;
     }
 
-    // Show confirmation modal
-    setShowImageUploadModal(true);
+    // Only show approval modal if not already approved
+    if (!photoUploadApproved) {
+      setShowImageUploadModal(true);
+    } else {
+      // Already approved, open file picker directly
+      handleConfirmImageUpload();
+    }
   };
 
   const handleConfirmImageUpload = async () => {
-    // Close modal first
+    // Close modal first if it was open
+    const wasModalOpen = showImageUploadModal;
     setShowImageUploadModal(false);
+    
+    // Mark as approved (for reviews, we track in state since review doesn't exist in DB yet)
+    if (!photoUploadApproved && wasModalOpen) {
+      setPhotoUploadApproved(true);
+    }
     
     // Immediately open file picker - this preserves user activation context
     try {
@@ -169,6 +188,8 @@ export default function ReviewScreen({ listing, booking, onNavigate }: ReviewScr
         comment: comment.trim(),
         images: images.length > 0 ? images : undefined,
         createdAt: new Date().toISOString(),
+        // If images exist, set photo upload approval timestamp
+        photoUploadApprovedAt: images.length > 0 ? new Date().toISOString() : undefined,
       };
 
       const result = await ReviewService.createReview(reviewData);

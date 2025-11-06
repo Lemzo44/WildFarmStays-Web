@@ -46,6 +46,11 @@ export class ReviewService {
           supabaseReviewData.images = (reviewData as any).images;
         }
 
+        // Add photo upload approval timestamp if images exist
+        if ((reviewData as any).photoUploadApprovedAt) {
+          supabaseReviewData.photo_upload_approved_at = (reviewData as any).photoUploadApprovedAt;
+        }
+
         const created = await APIService.create<any>('reviews', supabaseReviewData);
         
         // Normalize response

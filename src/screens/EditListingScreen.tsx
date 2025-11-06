@@ -47,6 +47,7 @@ export default function EditListingScreen({ listing, onNavigate }: EditListingSc
   const [selectedEndDate, setSelectedEndDate] = useState('');
   const [uploadingImages, setUploadingImages] = useState<{ [key: number]: boolean }>({});
   const [showImageUploadModal, setShowImageUploadModal] = useState(false);
+  const [photoUploadApproved, setPhotoUploadApproved] = useState(false);
   
   // Refs for scrolling to fields with errors
   const scrollViewRef = useRef<ScrollView>(null);
@@ -85,6 +86,10 @@ export default function EditListingScreen({ listing, onNavigate }: EditListingSc
     if (viewOnly && normalizedImages.length > 0) {
       console.log('Admin viewing listing images:', normalizedImages);
     }
+    
+    // Check if photo upload was already approved for this listing
+    const approvalTimestamp = currentListing.photo_upload_approved_at || currentListing.photoUploadApprovedAt;
+    setPhotoUploadApproved(!!approvalTimestamp);
     
     // Populate form with existing listing data
     setFormData({
@@ -322,13 +327,33 @@ export default function EditListingScreen({ listing, onNavigate }: EditListingSc
       return;
     }
 
-    // Show confirmation modal
-    setShowImageUploadModal(true);
+    // Only show approval modal if not already approved
+    if (!photoUploadApproved) {
+      setShowImageUploadModal(true);
+    } else {
+      // Already approved, open file picker directly
+      handleConfirmImageUpload();
+    }
   };
 
   const handleConfirmImageUpload = async () => {
-    // Close modal first
+    // Close modal first if it was open
+    const wasModalOpen = showImageUploadModal;
     setShowImageUploadModal(false);
+    
+    // If this is the first approval, save it to the database
+    if (!photoUploadApproved && currentListing.id && wasModalOpen) {
+      try {
+        const approvalTimestamp = new Date().toISOString();
+        await APIService.update('listings', currentListing.id, {
+          photo_upload_approved_at: approvalTimestamp
+        });
+        setPhotoUploadApproved(true);
+      } catch (error) {
+        console.error('Error saving photo upload approval:', error);
+        // Non-fatal - continue with upload even if approval save fails
+      }
+    }
     
     // Immediately open file picker - this preserves user activation context
     // because the modal button click is still part of the user interaction chain
