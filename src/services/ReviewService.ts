@@ -299,6 +299,9 @@ export class ReviewService {
         if ((reviewData as any).photoUploadApprovedAt !== undefined) {
           supabaseUpdateData.photo_upload_approved_at = (reviewData as any).photoUploadApprovedAt || null;
         }
+        if (reviewData.approved !== undefined) {
+          supabaseUpdateData.approved = reviewData.approved;
+        }
 
         const updated = await APIService.update('reviews', reviewId, supabaseUpdateData);
         
