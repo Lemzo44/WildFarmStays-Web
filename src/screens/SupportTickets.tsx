@@ -206,26 +206,40 @@ export default function SupportTickets({ onNavigate }: SupportTicketsProps) {
           <View style={styles.content}>
             <Text style={styles.resultsText}>{tickets.length} tickets found</Text>
             
-            {tickets.map((ticket) => (
-              <TouchableOpacity
-                key={ticket.id}
-                style={styles.ticketCard}
-                onPress={() => onNavigate?.('ticket-details', ticket)}
-              >
-                <View style={styles.ticketHeader}>
-                  <Text style={styles.ticketSubject}>{ticket.subject || 'No Subject'}</Text>
-                  <View style={[styles.statusBadge, ticket.status === 'open' && styles.statusOpen, ticket.status === 'resolved' && styles.statusResolved]}>
-                    <Text style={[styles.statusText, ticket.status === 'open' && styles.statusTextOpen, ticket.status === 'resolved' && styles.statusTextResolved]}>
-                      {ticket.status}
-                    </Text>
+            {tickets.map((ticket) => {
+              const isPublicContact = !ticket.userId && !ticket.user_id; // Public contact messages have NULL user_id
+              return (
+                <TouchableOpacity
+                  key={ticket.id}
+                  style={styles.ticketCard}
+                  onPress={() => onNavigate?.('ticket-details', ticket)}
+                >
+                  <View style={styles.ticketHeader}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.ticketSubject}>{ticket.subject || 'No Subject'}</Text>
+                      {isPublicContact && (
+                        <Text style={styles.publicContactLabel}>🌐 Public Contact Message</Text>
+                      )}
+                      {!isPublicContact && ticket.userName && (
+                        <Text style={styles.userNameLabel}>From: {ticket.userName}</Text>
+                      )}
+                    </View>
+                    <View style={[styles.statusBadge, ticket.status === 'open' && styles.statusOpen, ticket.status === 'resolved' && styles.statusResolved]}>
+                      <Text style={[styles.statusText, ticket.status === 'open' && styles.statusTextOpen, ticket.status === 'resolved' && styles.statusTextResolved]}>
+                        {ticket.status}
+                      </Text>
+                    </View>
                   </View>
-                </View>
-                <Text style={styles.ticketCategory}>{ticket.category || 'General'}</Text>
-                <Text style={styles.ticketDate}>
-                  Created: {(ticket.createdAt || ticket.created_at) ? new Date(ticket.createdAt || ticket.created_at).toLocaleDateString() : 'N/A'}
-                </Text>
-              </TouchableOpacity>
-            ))}
+                  {ticket.userEmail && (
+                    <Text style={styles.ticketEmail}>📧 {ticket.userEmail}</Text>
+                  )}
+                  <Text style={styles.ticketCategory}>{ticket.category || (isPublicContact ? 'Public Contact' : 'General')}</Text>
+                  <Text style={styles.ticketDate}>
+                    Created: {(ticket.createdAt || ticket.created_at) ? new Date(ticket.createdAt || ticket.created_at).toLocaleDateString() : 'N/A'}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </>
       )}
@@ -398,6 +412,22 @@ const styles = StyleSheet.create({
   ticketDate: {
     fontSize: 12,
     color: '#999',
+  },
+  publicContactLabel: {
+    fontSize: 12,
+    color: '#FF9800',
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  userNameLabel: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
+  },
+  ticketEmail: {
+    fontSize: 12,
+    color: '#1976D2',
+    marginBottom: 4,
   },
 });
 

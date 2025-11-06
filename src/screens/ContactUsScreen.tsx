@@ -99,33 +99,67 @@ export default function ContactUsScreen({ onNavigate }: ContactUsScreenProps) {
           await LocalStorageService.save('tickets', ticket);
         }
       } else {
-        // Public (non-logged-in) users: Send email notification to admin
-        // Support tickets should only be created for logged-in campers/farmers
-        if (messageEmailWebhook) {
+        // Public (non-logged-in) users: Store as contact message in support_tickets with user_id = NULL
+        // This allows admin to view and respond to public contact messages
+        if (useSupabase) {
           try {
-            await fetch(messageEmailWebhook, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                toEmail: 'admin@wildfarmstays.com', // Admin email - could be from config
-                toName: 'WildFarmStays Admin',
-                subject: `Public Contact Form: ${formData.subject || 'Contact Us Inquiry'}`,
-                messagePreview: `From: ${formData.name} (${formData.email}${formData.phone ? `, ${formData.phone}` : ''})\n\n${formData.message}`,
-                contactName: formData.name,
-                contactEmail: formData.email,
-                contactPhone: formData.phone || '',
-                contactMessage: formData.message,
-                contactSubject: formData.subject || 'Contact Us Inquiry',
-                isPublicContact: true,
-              }),
-            });
-            console.log('Public contact message sent to admin via email');
-          } catch (emailError) {
-            console.error('Error sending public contact email:', emailError);
-            // Don't fail the whole operation, but log it
+            const contactData = {
+              user_id: null, // NULL indicates public (non-logged-in) contact
+              name: formData.name,
+              email: formData.email,
+              subject: formData.subject || 'Public Contact Inquiry',
+              message: formData.message + (formData.phone ? `\n\nPhone: ${formData.phone}` : ''),
+              status: 'open',
+            };
+
+            console.log('Creating public contact message:', contactData);
+            const result = await APIService.create('support_tickets', contactData);
+            console.log('Public contact message created successfully:', result);
+            
+            // Also send email notification to admin (optional)
+            if (messageEmailWebhook) {
+              try {
+                await fetch(messageEmailWebhook, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    toEmail: 'admin@wildfarmstays.com',
+                    toName: 'WildFarmStays Admin',
+                    subject: `Public Contact Form: ${formData.subject || 'Contact Us Inquiry'}`,
+                    messagePreview: `From: ${formData.name} (${formData.email}${formData.phone ? `, ${formData.phone}` : ''})\n\n${formData.message}`,
+                    contactName: formData.name,
+                    contactEmail: formData.email,
+                    contactPhone: formData.phone || '',
+                    contactMessage: formData.message,
+                    contactSubject: formData.subject || 'Contact Us Inquiry',
+                    isPublicContact: true,
+                  }),
+                });
+                console.log('Email notification sent to admin');
+              } catch (emailError) {
+                console.warn('Email notification failed (non-critical):', emailError);
+              }
+            }
+          } catch (error) {
+            console.error('Error creating public contact message:', error);
+            throw error; // Re-throw to show error to user
           }
         } else {
-          console.warn('Email webhook not configured - public contact message not sent');
+          // Fallback to localStorage for development
+          const contact = {
+            id: Date.now().toString(),
+            subject: formData.subject || 'Public Contact Inquiry',
+            message: formData.message + (formData.phone ? `\n\nPhone: ${formData.phone}` : ''),
+            category: 'Public Contact',
+            priority: 'normal',
+            status: 'open',
+            userName: formData.name,
+            userEmail: formData.email,
+            userId: null, // NULL indicates public contact
+            createdAt: new Date().toISOString(),
+          };
+
+          await LocalStorageService.save('tickets', contact);
         }
       }
       
@@ -143,7 +177,7 @@ export default function ContactUsScreen({ onNavigate }: ContactUsScreenProps) {
         'Message Sent!',
         isLoggedIn 
           ? 'Your support ticket has been created. We will get back to you as soon as possible.'
-          : 'Thank you for contacting us. We will get back to you via email as soon as possible.',
+          : 'Thank you for contacting us. Your message has been received and we will get back to you as soon as possible.',
         [{ text: 'OK' }]
       );
     } catch (error) {
