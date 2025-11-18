@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Image, Modal } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { LocalStorageService } from '../services/LocalStorageService';
@@ -60,6 +60,9 @@ export default function BookingScreen({ listing, form, onNavigate }: BookingScre
   const [waiverType, setWaiverType] = useState<WaiverType>(() => detectWaiverType({ county: (listing as any)?.county, location: (listing as any)?.location }));
   const [showImageGallery, setShowImageGallery] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [selectedReviewImageIndex, setSelectedReviewImageIndex] = useState(0);
+  const [showReviewImageGallery, setShowReviewImageGallery] = useState(false);
+  const [galleryReviewImages, setGalleryReviewImages] = useState<string[]>([]);
 
   // Mock listing data if not provided
   const mockListing = {
@@ -111,6 +114,49 @@ export default function BookingScreen({ listing, form, onNavigate }: BookingScre
   };
 
   const listingImages = normalizeImages(currentListing);
+
+  // Normalize review images - handle JSON strings and arrays
+  const normalizeReviewImages = (review: any): string[] => {
+    if (!review) return [];
+    
+    let images = review.images || [];
+    
+    // Handle JSON string (if stored as JSON in database)
+    if (typeof images === 'string') {
+      try {
+        // Try parsing as JSON first
+        const parsed = JSON.parse(images);
+        if (Array.isArray(parsed)) {
+          images = parsed;
+        } else if (parsed && typeof parsed === 'string' && parsed.startsWith('http')) {
+          images = [parsed];
+        } else if (images.startsWith('http')) {
+          // If not JSON but is a URL string, use it directly
+          images = [images];
+        } else {
+          images = [];
+        }
+      } catch (e) {
+        // Not JSON, check if it's a direct URL string
+        if (images.startsWith('http') || images.startsWith('https')) {
+          images = [images];
+        } else {
+          images = [];
+        }
+      }
+    }
+    
+    // Filter to only valid URL strings
+    if (Array.isArray(images)) {
+      return images.filter((img: any) => 
+        img && 
+        typeof img === 'string' && 
+        (img.startsWith('http') || img.startsWith('https'))
+      );
+    }
+    
+    return [];
+  };
 
   useEffect(() => {
     checkFavoriteStatus();
@@ -445,16 +491,53 @@ export default function BookingScreen({ listing, form, onNavigate }: BookingScre
             <Text style={styles.averageRating}>⭐ {reviewStats.averageRating.toFixed(1)}</Text>
             <Text style={styles.reviewCount}>{reviewStats.totalReviews} reviews</Text>
           </View>
-          {reviews.map((review: any) => (
-            <View key={review.id} style={styles.reviewItem}>
-              <View style={styles.reviewHeader}>
-                <Text style={styles.reviewerName}>{reviewerNames[review.id] || 'Anonymous'}</Text>
-                <Text style={styles.reviewRating}>⭐ {review.rating}</Text>
+          {reviews.map((review: any) => {
+            const reviewImages = normalizeReviewImages(review);
+            return (
+              <View key={review.id} style={styles.reviewItem}>
+                <View style={styles.reviewHeader}>
+                  <Text style={styles.reviewerName}>{reviewerNames[review.id] || 'Anonymous'}</Text>
+                  <Text style={styles.reviewRating}>⭐ {review.rating}</Text>
+                </View>
+                {review.title && (
+                  <Text style={styles.reviewTitle}>{review.title}</Text>
+                )}
+                <Text style={styles.reviewComment}>{review.comment}</Text>
+                
+                {/* Review Photos */}
+                {reviewImages.length > 0 && (
+                  <View style={styles.reviewPhotosContainer}>
+                    <View style={styles.reviewPhotosGrid}>
+                      {reviewImages.map((image, index) => (
+                        <TouchableOpacity
+                          key={index}
+                          style={styles.reviewPhotoThumbnail}
+                          onPress={() => {
+                            setSelectedReviewImageIndex(index);
+                            setGalleryReviewImages(reviewImages);
+                            setShowReviewImageGallery(true);
+                          }}
+                        >
+                          <Image
+                            source={{ uri: image }}
+                            style={styles.reviewPhotoImage}
+                            resizeMode="cover"
+                          />
+                          {reviewImages.length > 1 && index === 0 && (
+                            <View style={styles.reviewPhotoCountBadge}>
+                              <Text style={styles.reviewPhotoCountText}>+{reviewImages.length - 1}</Text>
+                            </View>
+                          )}
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                )}
+                
+                <Text style={styles.reviewDate}>{formatDate(new Date(review.createdAt))}</Text>
               </View>
-              <Text style={styles.reviewComment}>{review.comment}</Text>
-              <Text style={styles.reviewDate}>{formatDate(new Date(review.createdAt))}</Text>
-            </View>
-          ))}
+            );
+          })}
         </View>
       )}
 
@@ -635,7 +718,95 @@ export default function BookingScreen({ listing, form, onNavigate }: BookingScre
         </View>
       )}
 
-      {/* Image Gallery Modal */}
+      {/* Review Image Gallery Modal */}
+      {showReviewImageGallery && galleryReviewImages.length > 0 && (
+        <Modal
+          visible={showReviewImageGallery}
+          animationType="fade"
+          transparent={true}
+          onRequestClose={() => setShowReviewImageGallery(false)}
+        >
+          <View style={styles.galleryModal}>
+            <View style={styles.galleryHeader}>
+              <Text style={styles.galleryTitle}>
+                {selectedReviewImageIndex + 1} / {galleryReviewImages.length}
+              </Text>
+              <TouchableOpacity
+                style={styles.galleryCloseButton}
+                onPress={() => setShowReviewImageGallery(false)}
+              >
+                <Text style={styles.galleryCloseText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.galleryImageContainer}>
+              <Image
+                source={{ uri: galleryReviewImages[selectedReviewImageIndex] }}
+                style={styles.galleryImage}
+                resizeMode="contain"
+              />
+            </View>
+
+            {galleryReviewImages.length > 1 && (
+              <View style={styles.galleryControls}>
+                <TouchableOpacity
+                  style={[
+                    styles.galleryNavButton,
+                    selectedReviewImageIndex === 0 && styles.galleryNavButtonDisabled,
+                  ]}
+                  onPress={() => {
+                    if (selectedReviewImageIndex > 0) {
+                      setSelectedReviewImageIndex(selectedReviewImageIndex - 1);
+                    }
+                  }}
+                  disabled={selectedReviewImageIndex === 0}
+                >
+                  <Text style={styles.galleryNavText}>← Previous</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.galleryNavButton,
+                    selectedReviewImageIndex === galleryReviewImages.length - 1 && styles.galleryNavButtonDisabled,
+                  ]}
+                  onPress={() => {
+                    if (selectedReviewImageIndex < galleryReviewImages.length - 1) {
+                      setSelectedReviewImageIndex(selectedReviewImageIndex + 1);
+                    }
+                  }}
+                  disabled={selectedReviewImageIndex === galleryReviewImages.length - 1}
+                >
+                  <Text style={styles.galleryNavText}>Next →</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Thumbnail strip */}
+            {galleryReviewImages.length > 1 && (
+              <View style={styles.thumbnailStrip}>
+                {galleryReviewImages.map((image, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={[
+                      styles.thumbnail,
+                      selectedReviewImageIndex === index && styles.thumbnailActive,
+                    ]}
+                    onPress={() => setSelectedReviewImageIndex(index)}
+                  >
+                    <Image
+                      source={{ uri: image }}
+                      style={styles.thumbnailImage}
+                      resizeMode="cover"
+                    />
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
+        </Modal>
+      )}
+
+      {/* Listing Image Gallery Modal */}
       {showImageGallery && listingImages.length > 0 && (
         <View style={styles.galleryModal}>
           <View style={styles.galleryHeader}>
@@ -881,11 +1052,53 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#333',
   },
+  reviewTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+  },
   reviewComment: {
     fontSize: 14,
     lineHeight: 20,
     color: '#666',
     marginBottom: 8,
+  },
+  reviewPhotosContainer: {
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  reviewPhotosGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  reviewPhotoThumbnail: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
+    overflow: 'hidden',
+    position: 'relative',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  reviewPhotoImage: {
+    width: '100%',
+    height: '100%',
+  },
+  reviewPhotoCountBadge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    borderRadius: 12,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  reviewPhotoCountText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: 'bold',
   },
   reviewDate: {
     fontSize: 12,
