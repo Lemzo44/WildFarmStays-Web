@@ -93,19 +93,30 @@ export default function ReviewsManagement({ onNavigate }: ReviewsManagementProps
           text: 'Approve',
           onPress: async () => {
             try {
-              await ReviewService.updateReview(reviewId, { approved: true });
+              console.log('Approving review:', reviewId);
+              
+              // Update the review
+              const updatedReview = await ReviewService.updateReview(reviewId, { approved: true });
+              console.log('Review updated successfully:', updatedReview);
+              
+              // Reload reviews to reflect the change
+              await loadReviews();
+              
+              // Close the modal
+              setShowDetailsModal(false);
+              
               Alert.alert('Success', 'Review approved successfully', [
-                {
-                  text: 'OK',
-                  onPress: () => {
-                    setShowDetailsModal(false);
-                    onNavigate?.('admin-dashboard');
-                  }
-                }
+                { text: 'OK' }
               ]);
             } catch (error: any) {
               console.error('Error approving review:', error);
-              Alert.alert('Error', error?.message || 'Failed to approve review');
+              console.error('Error details:', {
+                message: error?.message,
+                code: error?.code,
+                details: error?.details,
+                hint: error?.hint
+              });
+              Alert.alert('Error', error?.message || 'Failed to approve review. Please check the console for details.');
             }
           }
         }
@@ -124,13 +135,29 @@ export default function ReviewsManagement({ onNavigate }: ReviewsManagementProps
           style: 'destructive',
           onPress: async () => {
             try {
-              await ReviewService.updateReview(reviewId, { approved: false });
-              Alert.alert('Success', 'Review rejected');
+              console.log('Rejecting review:', reviewId);
+              
+              const updatedReview = await ReviewService.updateReview(reviewId, { approved: false });
+              console.log('Review rejected successfully:', updatedReview);
+              
+              // Reload reviews to reflect the change
+              await loadReviews();
+              
+              // Close the modal
               setShowDetailsModal(false);
-              loadReviews();
+              
+              Alert.alert('Success', 'Review rejected', [
+                { text: 'OK' }
+              ]);
             } catch (error: any) {
               console.error('Error rejecting review:', error);
-              Alert.alert('Error', error?.message || 'Failed to reject review');
+              console.error('Error details:', {
+                message: error?.message,
+                code: error?.code,
+                details: error?.details,
+                hint: error?.hint
+              });
+              Alert.alert('Error', error?.message || 'Failed to reject review. Please check the console for details.');
             }
           }
         }

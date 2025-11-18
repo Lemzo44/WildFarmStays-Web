@@ -292,6 +292,8 @@ export class ReviewService {
    */
   static async updateReview(reviewId: string, reviewData: Partial<Review>): Promise<Review> {
     try {
+      console.log('ReviewService.updateReview called with:', { reviewId, reviewData });
+      
       if (useSupabase) {
         // Map to Supabase schema
         const supabaseUpdateData: any = {};
@@ -313,13 +315,16 @@ export class ReviewService {
         }
         if (reviewData.approved !== undefined) {
           supabaseUpdateData.approved = reviewData.approved;
+          console.log('Setting approved field to:', reviewData.approved);
         }
 
+        console.log('Updating review in Supabase with data:', supabaseUpdateData);
         const updated = await APIService.update('reviews', reviewId, supabaseUpdateData);
+        console.log('APIService.update returned:', updated);
         
         // Normalize response
         const row: any = updated;
-        return {
+        const normalized = {
           id: row.id,
           listingId: row.listing_id || row.listingId,
           reviewerId: row.reviewer_id || row.reviewerId,
@@ -333,6 +338,8 @@ export class ReviewService {
           createdAt: row.created_at || row.createdAt || '',
           updatedAt: row.updated_at || row.updatedAt || new Date().toISOString(),
         };
+        console.log('Normalized review:', normalized);
+        return normalized;
       } else {
         const existing = await LocalStorageService.getById('reviews', reviewId);
         if (!existing) {
@@ -350,7 +357,15 @@ export class ReviewService {
       }
     } catch (error: any) {
       console.error('Error updating review:', error);
-      throw new Error('Failed to update review');
+      console.error('Error details:', {
+        message: error?.message,
+        code: error?.code,
+        details: error?.details,
+        hint: error?.hint,
+        status: error?.status,
+        statusText: error?.statusText
+      });
+      throw error;
     }
   }
 
