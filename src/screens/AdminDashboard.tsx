@@ -49,8 +49,23 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
 
   const loadStatistics = async () => {
     try {
-      // Load users
-      const users = await LocalStorageService.getAll('users');
+      // Load users from Supabase or localStorage
+      let users: any[] = [];
+      if (useSupabase) {
+        users = await APIService.get('profiles', {
+          orderBy: { column: 'created_at', ascending: false }
+        });
+        // Normalize field names
+        users = users.map((u: any) => ({
+          ...u,
+          role: u.role,
+          joinDate: u.created_at || u.createdAt,
+          createdAt: u.created_at || u.createdAt,
+        }));
+      } else {
+        users = await LocalStorageService.getAll('users');
+      }
+      
       const campers = users.filter((u: any) => u.role === 'camper' && u.role !== 'admin');
       const farmers = users.filter((u: any) => u.role === 'farmer');
       
@@ -64,30 +79,87 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
         listings = await LocalStorageService.getAll('listings');
       }
       
-      // Filter listings - check both status and availability fields
+      // Filter listings - only check status field (not availability)
       const activeListings = listings.filter((l: any) => 
-        (l.status === 'approved' || l.status === 'live') || 
-        (l.availability === 'available' && l.status !== 'rejected')
+        l.status === 'approved' || l.status === 'live'
       );
       const pendingListings = listings.filter((l: any) => 
-        l.status === 'pending' || (l.availability === 'pending' && l.status !== 'approved')
+        l.status === 'pending'
       );
       
-      // Load bookings
-      const bookings = await LocalStorageService.getAll('bookings');
-      const openBookings = bookings.filter((b: any) => ['pending', 'confirmed', 'upcoming'].includes(b.status));
-      const pendingBookings = bookings.filter((b: any) => b.status === 'pending');
+      // Load bookings from Supabase or localStorage
+      let bookings: any[] = [];
+      if (useSupabase) {
+        bookings = await APIService.get('bookings', {
+          orderBy: { column: 'created_at', ascending: false }
+        });
+        // Normalize field names
+        bookings = bookings.map((b: any) => ({
+          ...b,
+          status: b.status,
+          startDate: b.start_date || b.startDate,
+          endDate: b.end_date || b.endDate,
+          totalPrice: b.total_price || b.totalPrice,
+          createdAt: b.created_at || b.createdAt,
+        }));
+      } else {
+        bookings = await LocalStorageService.getAll('bookings');
+      }
       
-      // Calculate revenue (simplified)
+      // Normalize booking status based on dates (same logic as BookingService)
+      const normalizeBookingStatus = (booking: any): string => {
+        // If already cancelled, keep it cancelled
+        if (booking.status === 'cancelled') {
+          return 'cancelled';
+        }
+
+        // Check if end date has passed
+        const endDateStr = booking.endDate || booking.end_date;
+        if (endDateStr) {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          
+          const endDate = new Date(endDateStr);
+          endDate.setHours(0, 0, 0, 0);
+          
+          // If end date has passed and not cancelled, mark as completed
+          if (endDate < today) {
+            return 'completed';
+          }
+        }
+
+        // Otherwise, return existing status (or default to pending)
+        return booking.status || 'pending';
+      };
+      
+      // Normalize all booking statuses
+      const normalizedBookings = bookings.map((b: any) => ({
+        ...b,
+        status: normalizeBookingStatus(b),
+      }));
+      
+      // Filter bookings
+      const openBookings = normalizedBookings.filter((b: any) => 
+        ['pending', 'confirmed'].includes(b.status)
+      );
+      const pendingBookings = normalizedBookings.filter((b: any) => 
+        b.status === 'pending'
+      );
+      
+      // Calculate revenue (simplified) - use normalized bookings
       const today = new Date();
-      const thisMonthBookings = bookings.filter((b: any) => {
-        const bookingDate = new Date(b.createdAt);
+      const thisMonthBookings = normalizedBookings.filter((b: any) => {
+        const bookingDate = new Date(b.createdAt || b.created_at);
         return bookingDate.getMonth() === today.getMonth() && 
                bookingDate.getFullYear() === today.getFullYear();
       });
       
-      const totalRevenue = bookings.reduce((sum: number, b: any) => sum + (b.totalPrice || 0), 0);
-      const thisMonthRevenue = thisMonthBookings.reduce((sum: number, b: any) => sum + (b.totalPrice || 0), 0);
+      const totalRevenue = normalizedBookings
+        .filter((b: any) => b.status !== 'cancelled')
+        .reduce((sum: number, b: any) => sum + (b.totalPrice || b.total_price || 0), 0);
+      const thisMonthRevenue = thisMonthBookings
+        .filter((b: any) => b.status !== 'cancelled')
+        .reduce((sum: number, b: any) => sum + (b.totalPrice || b.total_price || 0), 0);
       
       // Calculate new registrations
       const sevenDaysAgo = new Date();
