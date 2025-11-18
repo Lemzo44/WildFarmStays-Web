@@ -516,6 +516,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E0E0E0',
     marginBottom: 8,
+    color: '#333',
   },
   commentLabel: {
     fontSize: 14,
@@ -532,6 +533,7 @@ const styles = StyleSheet.create({
     minHeight: 120,
     textAlignVertical: 'top',
     marginBottom: 8,
+    color: '#333',
   },
   charCount: {
     fontSize: 12,

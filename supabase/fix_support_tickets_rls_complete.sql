@@ -64,3 +64,4 @@ CREATE POLICY "Admins can update all tickets"
 -- SELECT auth.uid() AS current_user_id;
 
 
+

@@ -13,3 +13,4 @@ WHERE photo_upload_approved_at IS NOT NULL;
 COMMENT ON COLUMN public.reviews.photo_upload_approved_at IS 
 'Timestamp when camper first approved photo upload access for this review. Set when review is submitted with images.';
 
+

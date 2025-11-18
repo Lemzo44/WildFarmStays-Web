@@ -64,3 +64,4 @@ CREATE POLICY "Allow ticket updates"
 -- Verify RLS is enabled
 ALTER TABLE public.support_tickets ENABLE ROW LEVEL SECURITY;
 
+

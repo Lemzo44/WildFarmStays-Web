@@ -32,3 +32,4 @@ WHERE event_object_table = 'listings';
 -- WHERE id = 'YOUR_LISTING_ID'
 -- RETURNING id, status, availability, updated_at;
 
+

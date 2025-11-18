@@ -94,9 +94,15 @@ export default function ReviewsManagement({ onNavigate }: ReviewsManagementProps
           onPress: async () => {
             try {
               await ReviewService.updateReview(reviewId, { approved: true });
-              Alert.alert('Success', 'Review approved successfully');
-              setShowDetailsModal(false);
-              loadReviews();
+              Alert.alert('Success', 'Review approved successfully', [
+                {
+                  text: 'OK',
+                  onPress: () => {
+                    setShowDetailsModal(false);
+                    onNavigate?.('admin-dashboard');
+                  }
+                }
+              ]);
             } catch (error: any) {
               console.error('Error approving review:', error);
               Alert.alert('Error', error?.message || 'Failed to approve review');
@@ -384,15 +390,15 @@ export default function ReviewsManagement({ onNavigate }: ReviewsManagementProps
                 </View>
               )}
 
+              {/* Photos Section - Prominent Display (Moved up for visibility) */}
               <View style={styles.detailCard}>
-                <Text style={styles.detailLabel}>Review</Text>
-                <Text style={styles.detailComment}>{selectedReview.comment || 'No comment provided'}</Text>
-              </View>
-
-              {/* Photos */}
-              {reviewImages.length > 0 && (
-                <View style={styles.detailCard}>
-                  <Text style={styles.detailLabel}>Photos ({reviewImages.length})</Text>
+                <Text style={styles.detailLabel}>
+                  📷 Photos ({reviewImages.length})
+                  {reviewImages.length > 0 && (
+                    <Text style={styles.photoWarningText}> - Click to view full size</Text>
+                  )}
+                </Text>
+                {reviewImages.length > 0 ? (
                   <View style={styles.photosContainer}>
                     {reviewImages.map((image, index) => (
                       <TouchableOpacity
@@ -413,11 +419,28 @@ export default function ReviewsManagement({ onNavigate }: ReviewsManagementProps
                             <Text style={styles.photoCountText}>+{reviewImages.length - 1}</Text>
                           </View>
                         )}
+                        <View style={styles.photoOverlay}>
+                          <Text style={styles.photoOverlayText}>Tap to enlarge</Text>
+                        </View>
                       </TouchableOpacity>
                     ))}
                   </View>
-                </View>
-              )}
+                ) : (
+                  <View style={styles.noPhotosContainer}>
+                    <Text style={styles.noPhotosText}>No photos attached to this review</Text>
+                  </View>
+                )}
+                {reviewImages.length > 0 && (
+                  <Text style={styles.photoNoteText}>
+                    ⚠️ Please review all photos before approving to ensure content is appropriate.
+                  </Text>
+                )}
+              </View>
+
+              <View style={styles.detailCard}>
+                <Text style={styles.detailLabel}>Review</Text>
+                <Text style={styles.detailComment}>{selectedReview.comment || 'No comment provided'}</Text>
+              </View>
 
               <View style={styles.detailCard}>
                 <Text style={styles.detailLabel}>Date Submitted</Text>
@@ -814,33 +837,83 @@ const styles = StyleSheet.create({
   photosContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 8,
+    gap: 12,
+    marginTop: 12,
+    justifyContent: 'flex-start',
   },
   photoThumbnail: {
-    width: 100,
-    height: 100,
+    width: 150,
+    height: 150,
     borderRadius: 8,
     overflow: 'hidden',
     position: 'relative',
+    borderWidth: 2,
+    borderColor: '#E0E0E0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   photoThumbnailImage: {
     width: '100%',
     height: '100%',
   },
+  photoOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  photoOverlayText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
   photoCountBadge: {
     position: 'absolute',
-    top: 4,
-    right: 4,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
     borderRadius: 12,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    zIndex: 1,
   },
   photoCountText: {
     color: '#FFFFFF',
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: 'bold',
+  },
+  photoWarningText: {
+    fontSize: 11,
+    color: '#666',
+    fontWeight: 'normal',
+  },
+  photoNoteText: {
+    fontSize: 12,
+    color: '#F57C00',
+    fontWeight: '600',
+    marginTop: 12,
+    padding: 8,
+    backgroundColor: '#FFF3E0',
+    borderRadius: 6,
+    borderLeftWidth: 3,
+    borderLeftColor: '#F57C00',
+  },
+  noPhotosContainer: {
+    padding: 20,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  noPhotosText: {
+    fontSize: 14,
+    color: '#999',
+    fontStyle: 'italic',
   },
   modalActions: {
     marginTop: 24,

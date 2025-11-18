@@ -497,6 +497,7 @@ const styles = StyleSheet.create({
     minHeight: 100,
     textAlignVertical: 'top',
     marginBottom: 8,
+    color: '#333',
   },
   charCount: {
     fontSize: 12,
