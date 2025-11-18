@@ -64,7 +64,7 @@ export default function FarmerReviewsScreen({ onNavigate }: FarmerReviewsScreenP
       <Text style={styles.listing}>{item.listingTitle}</Text>
       <Text style={styles.reviewer}>by {item.reviewerName}</Text>
       <Text style={styles.rating}>⭐ {item.rating}/5</Text>
-      {item.title ? <Text style={styles.title}>{item.title}</Text> : null}
+      {item.title ? <Text style={styles.reviewTitle}>{item.title}</Text> : null}
       {item.comment ? <Text style={styles.comment}>{item.comment}</Text> : null}
       <Text style={styles.date}>{new Date(item.createdAt).toLocaleDateString('en-GB', { year: 'numeric', month: 'short', day: 'numeric' })}</Text>
     </View>
@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
   listing: { fontSize: 16, fontWeight: '600', color: '#333' },
   reviewer: { fontSize: 14, color: '#666', marginTop: 2 },
   rating: { fontSize: 14, color: '#2E7D32', marginTop: 6 },
-  title: { fontSize: 14, fontWeight: '600', color: '#333', marginTop: 6 },
+  reviewTitle: { fontSize: 14, fontWeight: '600', color: '#333', marginTop: 6 },
   comment: { fontSize: 14, color: '#555', marginTop: 4, lineHeight: 20 },
   date: { fontSize: 12, color: '#999', marginTop: 6 },
 });

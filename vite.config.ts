@@ -19,4 +19,15 @@ export default defineConfig({
     include: ['react-native-web'],
     exclude: ['react-native-safe-area-context'],
   },
+  build: {
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom'],
+          'react-native-vendor': ['react-native-web'],
+        },
+      },
+    },
+  },
 })

@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { detectWaiverType, getWaiverText, WaiverType } from '../utils/Waiver';
+import { detectWaiverType, getWaiverText, type WaiverType } from '../utils/Waiver';
 
 interface WaiverViewScreenProps {
   onNavigate?: (screen: string, data?: any) => void;
