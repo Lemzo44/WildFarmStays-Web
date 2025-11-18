@@ -96,12 +96,24 @@ export class ReviewService {
    */
   static async getListingReviews(listingId: string): Promise<Review[]> {
     try {
+      if (!listingId) {
+        console.error('getListingReviews: No listingId provided');
+        return [];
+      }
+      
+      console.log('getListingReviews: Fetching reviews for listingId:', listingId);
+      
       if (useSupabase) {
         // Fetch reviews for this listing (only approved ones for public, all for admin)
         const reviews = await APIService.get<any>('reviews', {
           filter: { column: 'listing_id', operator: 'eq', value: listingId },
           orderBy: { column: 'created_at', ascending: false }
         });
+        
+        console.log('getListingReviews: Raw reviews from database:', reviews?.length || 0, 'reviews');
+        if (reviews && reviews.length > 0) {
+          console.log('getListingReviews: First review listing_id:', reviews[0].listing_id || reviews[0].listingId);
+        }
 
         // Batch fetch reviewer names from profiles
         const reviewerIdSet = new Set<string>();

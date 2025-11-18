@@ -145,7 +145,7 @@ function AppContent() {
           />
         );
       case 'reviews':
-        return <ReviewsScreen />;
+        return <ReviewsScreen listingId={(screenData as any)?.listingId} onNavigate={handleNavigate} />;
       case 'create-listing':
         return <CreateListingScreen onNavigate={handleNavigate} />;
       case 'edit-listing':

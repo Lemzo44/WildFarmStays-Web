@@ -37,6 +37,11 @@ export class APIService {
 
       // Apply filters
       if (options?.filter) {
+        console.log(`APIService.get: Applying filter on ${table}:`, {
+          column: options.filter.column,
+          operator: options.filter.operator,
+          value: options.filter.value
+        });
         query = query.filter(
           options.filter.column,
           options.filter.operator as any,
@@ -61,6 +66,11 @@ export class APIService {
       if (error) {
         console.error(`Error fetching from ${table}:`, error);
         throw error;
+      }
+
+      console.log(`APIService.get: Fetched ${(data || []).length} records from ${table}`);
+      if (options?.filter && (data || []).length > 0) {
+        console.log(`APIService.get: First record filter column value:`, (data as any[])[0][options.filter.column]);
       }
 
       return (data || []) as T[];

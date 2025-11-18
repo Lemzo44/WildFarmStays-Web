@@ -438,7 +438,7 @@ export default function ListingsScreen({ onNavigate }: ListingsScreenProps = {})
                   </TouchableOpacity>
                   <TouchableOpacity 
                     style={styles.reviewsButton}
-                    onPress={() => onNavigate?.('reviews')}
+                    onPress={() => onNavigate?.('reviews', { listingId: item.id })}
                   >
                     <Text style={styles.reviewsButtonText}>⭐ Reviews</Text>
                   </TouchableOpacity>

@@ -171,11 +171,22 @@ export default function BookingScreen({ listing, form, onNavigate }: BookingScre
   };
 
   const loadReviews = async () => {
+    if (!currentListing?.id) {
+      console.warn('BookingScreen: Cannot load reviews without listing ID');
+      return;
+    }
+    
     try {
+      console.log('BookingScreen: Loading reviews for listingId:', currentListing.id);
       const [listingReviews, stats] = await Promise.all([
         ReviewService.getListingReviews(currentListing.id),
         ReviewService.getListingReviewStats(currentListing.id)
       ]);
+      
+      console.log('BookingScreen: Loaded', listingReviews.length, 'reviews');
+      if (listingReviews.length > 0) {
+        console.log('BookingScreen: First review listingId:', listingReviews[0].listingId);
+      }
       
       setReviews(listingReviews.slice(0, 3)); // Show only first 3 reviews
       setReviewStats({

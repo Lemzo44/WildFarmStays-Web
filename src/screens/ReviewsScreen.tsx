@@ -27,20 +27,35 @@ export default function ReviewsScreen({ listingId, onNavigate }: ReviewsScreenPr
   const [showImageGallery, setShowImageGallery] = useState(false);
   const [galleryImages, setGalleryImages] = useState<string[]>([]);
 
-  // Mock listing data if not provided
-  const mockListingId = listingId || '1';
-
   useEffect(() => {
-    loadReviews();
+    if (listingId) {
+      console.log('ReviewsScreen: Loading reviews for listingId:', listingId);
+      loadReviews();
+    } else {
+      console.warn('ReviewsScreen: No listingId provided, cannot load reviews');
+      setLoading(false);
+    }
   }, [listingId]);
 
   const loadReviews = async () => {
+    if (!listingId) {
+      console.error('ReviewsScreen: Cannot load reviews without listingId');
+      setLoading(false);
+      return;
+    }
+    
     try {
       setLoading(true);
+      console.log('ReviewsScreen: Fetching reviews for listingId:', listingId);
       const [listingReviews, stats] = await Promise.all([
-        ReviewService.getListingReviews(mockListingId),
-        ReviewService.getListingReviewStats(mockListingId)
+        ReviewService.getListingReviews(listingId),
+        ReviewService.getListingReviewStats(listingId)
       ]);
+      
+      console.log('ReviewsScreen: Loaded', listingReviews.length, 'reviews');
+      if (listingReviews.length > 0) {
+        console.log('ReviewsScreen: First review listingId:', listingReviews[0].listingId);
+      }
       
       setReviews(listingReviews);
       setReviewStats(stats);
