@@ -103,7 +103,12 @@ export default function ReviewsManagement({ onNavigate }: ReviewsManagementProps
       // Update the review
       const updatedReview = await ReviewService.updateReview(reviewId, { approved: true });
       console.log('Review updated successfully:', updatedReview);
-      console.log('Updated review approved status:', updatedReview.approved);
+      console.log('Updated review approved status:', updatedReview.approved, 'type:', typeof updatedReview.approved);
+      
+      // Verify the update actually happened by checking the database
+      const verifyReview = await ReviewService.getReviewById(reviewId);
+      console.log('Verification - Review from database:', verifyReview);
+      console.log('Verification - approved status:', verifyReview?.approved, 'type:', typeof verifyReview?.approved);
       
       // Update the review in the local state immediately
       setReviews((prevReviews) => 

@@ -404,6 +404,46 @@ export class ReviewService {
   }
 
   /**
+   * Get a single review by ID
+   */
+  static async getReviewById(reviewId: string): Promise<Review | null> {
+    try {
+      if (useSupabase) {
+        const review = await APIService.getById<any>('reviews', reviewId);
+        if (!review) {
+          return null;
+        }
+        
+        // Normalize approved field
+        let approvedValue = false;
+        if (review.approved === true || review.approved === 'true' || review.approved === 1) {
+          approvedValue = true;
+        }
+        
+        return {
+          id: review.id,
+          listingId: review.listing_id || review.listingId,
+          reviewerId: review.reviewer_id || review.reviewerId,
+          reviewerName: review.reviewer_name || review.reviewerName || 'Anonymous',
+          rating: review.rating,
+          comment: review.comment || '',
+          title: review.title || undefined,
+          approved: approvedValue,
+          bookingId: review.booking_id || review.bookingId,
+          images: review.images || [],
+          createdAt: review.created_at || review.createdAt || '',
+          updatedAt: review.updated_at || review.updatedAt || '',
+        };
+      } else {
+        return await LocalStorageService.getById('reviews', reviewId);
+      }
+    } catch (error) {
+      console.error('Error getting review by ID:', error);
+      return null;
+    }
+  }
+
+  /**
    * Get all reviews (admin function)
    */
   static async getAllReviews(): Promise<Review[]> {
