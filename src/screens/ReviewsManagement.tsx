@@ -164,15 +164,53 @@ export default function ReviewsManagement({ onNavigate }: ReviewsManagementProps
   };
 
   const normalizeReviewImages = (review: any): string[] => {
-    if (!review) return [];
+    if (!review) {
+      console.log('normalizeReviewImages: No review provided');
+      return [];
+    }
     
-    const images = review.images || [];
+    let images = review.images || [];
+    console.log('normalizeReviewImages: Raw images data:', images, 'Type:', typeof images);
+    
+    // Handle JSON string (if stored as JSON in database)
+    if (typeof images === 'string') {
+      try {
+        // Try parsing as JSON first
+        const parsed = JSON.parse(images);
+        console.log('normalizeReviewImages: Parsed JSON:', parsed);
+        if (Array.isArray(parsed)) {
+          images = parsed;
+        } else if (parsed && typeof parsed === 'string' && parsed.startsWith('http')) {
+          images = [parsed];
+        } else if (images.startsWith('http')) {
+          // If not JSON but is a URL string, use it directly
+          images = [images];
+        } else {
+          images = [];
+        }
+      } catch (e) {
+        // Not JSON, check if it's a direct URL string
+        console.log('normalizeReviewImages: Not JSON, checking if URL string');
+        if (images.startsWith('http') || images.startsWith('https')) {
+          images = [images];
+        } else {
+          images = [];
+        }
+      }
+    }
+    
+    // Filter to only valid URL strings
     if (Array.isArray(images)) {
-      return images.filter((img: any) => img && (typeof img === 'string') && (img.startsWith('http') || img.startsWith('https')));
+      const filtered = images.filter((img: any) => 
+        img && 
+        typeof img === 'string' && 
+        (img.startsWith('http') || img.startsWith('https'))
+      );
+      console.log('normalizeReviewImages: Filtered images:', filtered);
+      return filtered;
     }
-    if (typeof images === 'string' && images.startsWith('http')) {
-      return [images];
-    }
+    
+    console.log('normalizeReviewImages: No valid images found');
     return [];
   };
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList, Image, Modal } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { ReviewService } from '../services/ReviewService';
@@ -23,6 +23,9 @@ export default function ReviewsScreen({ listingId, onNavigate }: ReviewsScreenPr
   });
   const [reviewerNames, setReviewerNames] = useState({});
   const [loading, setLoading] = useState(true);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [showImageGallery, setShowImageGallery] = useState(false);
+  const [galleryImages, setGalleryImages] = useState<string[]>([]);
 
   // Mock listing data if not provided
   const mockListingId = listingId || '1';
@@ -126,36 +129,113 @@ export default function ReviewsScreen({ listingId, onNavigate }: ReviewsScreenPr
     );
   };
 
-  const renderReviewItem = ({ item }: { item: any }) => (
-    <View style={styles.reviewItem}>
-      <View style={styles.reviewHeader}>
-        <View style={styles.reviewerInfo}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {reviewerNames[item.id]?.charAt(0) || 'A'}
-            </Text>
+  const normalizeReviewImages = (review: any): string[] => {
+    if (!review) return [];
+    
+    let images = review.images || [];
+    
+    // Handle JSON string (if stored as JSON in database)
+    if (typeof images === 'string') {
+      try {
+        // Try parsing as JSON first
+        const parsed = JSON.parse(images);
+        if (Array.isArray(parsed)) {
+          images = parsed;
+        } else if (parsed && typeof parsed === 'string' && parsed.startsWith('http')) {
+          images = [parsed];
+        } else if (images.startsWith('http')) {
+          // If not JSON but is a URL string, use it directly
+          images = [images];
+        } else {
+          images = [];
+        }
+      } catch (e) {
+        // Not JSON, check if it's a direct URL string
+        if (images.startsWith('http') || images.startsWith('https')) {
+          images = [images];
+        } else {
+          images = [];
+        }
+      }
+    }
+    
+    // Filter to only valid URL strings
+    if (Array.isArray(images)) {
+      return images.filter((img: any) => 
+        img && 
+        typeof img === 'string' && 
+        (img.startsWith('http') || img.startsWith('https'))
+      );
+    }
+    
+    return [];
+  };
+
+  const renderReviewItem = ({ item }: { item: any }) => {
+    const reviewImages = normalizeReviewImages(item);
+    
+    return (
+      <View style={styles.reviewItem}>
+        <View style={styles.reviewHeader}>
+          <View style={styles.reviewerInfo}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>
+                {reviewerNames[item.id]?.charAt(0) || 'A'}
+              </Text>
+            </View>
+            <View style={styles.reviewerDetails}>
+              <Text style={styles.reviewerName}>
+                {reviewerNames[item.id] || item.reviewerName || 'Anonymous'}
+              </Text>
+              <Text style={styles.reviewDate}>
+                {formatDate(item.createdAt)}
+              </Text>
+            </View>
           </View>
-          <View style={styles.reviewerDetails}>
-            <Text style={styles.reviewerName}>
-              {reviewerNames[item.id] || item.reviewerName || 'Anonymous'}
-            </Text>
-            <Text style={styles.reviewDate}>
-              {formatDate(item.createdAt)}
-            </Text>
+          <View style={styles.reviewRating}>
+            {renderStars(item.rating)}
           </View>
         </View>
-        <View style={styles.reviewRating}>
-          {renderStars(item.rating)}
-        </View>
+        
+        {item.title && (
+          <Text style={styles.reviewTitle}>{item.title}</Text>
+        )}
+        
+        <Text style={styles.reviewComment}>{item.comment}</Text>
+        
+        {/* Review Photos */}
+        {reviewImages.length > 0 && (
+          <View style={styles.reviewPhotosContainer}>
+            <Text style={styles.reviewPhotosLabel}>Photos:</Text>
+            <View style={styles.reviewPhotosGrid}>
+              {reviewImages.map((image, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={styles.reviewPhotoThumbnail}
+                  onPress={() => {
+                    setSelectedImageIndex(index);
+                    setGalleryImages(reviewImages);
+                    setShowImageGallery(true);
+                  }}
+                >
+                  <Image
+                    source={{ uri: image }}
+                    style={styles.reviewPhotoImage}
+                    resizeMode="cover"
+                  />
+                  {reviewImages.length > 1 && index === 0 && (
+                    <View style={styles.reviewPhotoCountBadge}>
+                      <Text style={styles.reviewPhotoCountText}>+{reviewImages.length - 1}</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
       </View>
-      
-      {item.title && (
-        <Text style={styles.reviewTitle}>{item.title}</Text>
-      )}
-      
-      <Text style={styles.reviewComment}>{item.comment}</Text>
-    </View>
-  );
+    );
+  };
 
   if (loading) {
     return (
@@ -219,6 +299,94 @@ export default function ReviewsScreen({ listingId, onNavigate }: ReviewsScreenPr
             </TouchableOpacity>
           </View>
         </View>
+      )}
+
+      {/* Image Gallery Modal */}
+      {showImageGallery && galleryImages.length > 0 && (
+        <Modal
+          visible={showImageGallery}
+          animationType="fade"
+          transparent={true}
+          onRequestClose={() => setShowImageGallery(false)}
+        >
+          <View style={styles.galleryModal}>
+            <View style={styles.galleryHeader}>
+              <Text style={styles.galleryTitle}>
+                {selectedImageIndex + 1} / {galleryImages.length}
+              </Text>
+              <TouchableOpacity
+                style={styles.galleryCloseButton}
+                onPress={() => setShowImageGallery(false)}
+              >
+                <Text style={styles.galleryCloseText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.galleryImageContainer}>
+              <Image
+                source={{ uri: galleryImages[selectedImageIndex] }}
+                style={styles.galleryImage}
+                resizeMode="contain"
+              />
+            </View>
+
+            {galleryImages.length > 1 && (
+              <View style={styles.galleryControls}>
+                <TouchableOpacity
+                  style={[
+                    styles.galleryNavButton,
+                    selectedImageIndex === 0 && styles.galleryNavButtonDisabled,
+                  ]}
+                  onPress={() => {
+                    if (selectedImageIndex > 0) {
+                      setSelectedImageIndex(selectedImageIndex - 1);
+                    }
+                  }}
+                  disabled={selectedImageIndex === 0}
+                >
+                  <Text style={styles.galleryNavText}>← Previous</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.galleryNavButton,
+                    selectedImageIndex === galleryImages.length - 1 && styles.galleryNavButtonDisabled,
+                  ]}
+                  onPress={() => {
+                    if (selectedImageIndex < galleryImages.length - 1) {
+                      setSelectedImageIndex(selectedImageIndex + 1);
+                    }
+                  }}
+                  disabled={selectedImageIndex === galleryImages.length - 1}
+                >
+                  <Text style={styles.galleryNavText}>Next →</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Thumbnail strip */}
+            {galleryImages.length > 1 && (
+              <View style={styles.thumbnailStrip}>
+                {galleryImages.map((image, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={[
+                      styles.thumbnail,
+                      selectedImageIndex === index && styles.thumbnailActive,
+                    ]}
+                    onPress={() => setSelectedImageIndex(index)}
+                  >
+                    <Image
+                      source={{ uri: image }}
+                      style={styles.thumbnailImage}
+                      resizeMode="cover"
+                    />
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
+        </Modal>
       )}
     </View>
   );
@@ -412,6 +580,121 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  reviewPhotosContainer: {
+    marginTop: 12,
+  },
+  reviewPhotosLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 8,
+  },
+  reviewPhotosGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  reviewPhotoThumbnail: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
+    overflow: 'hidden',
+    position: 'relative',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  reviewPhotoImage: {
+    width: '100%',
+    height: '100%',
+  },
+  reviewPhotoCountBadge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    borderRadius: 12,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  reviewPhotoCountText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  // Gallery Modal styles
+  galleryModal: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+  },
+  galleryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    paddingTop: 40,
+  },
+  galleryTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  galleryCloseButton: {
+    padding: 8,
+  },
+  galleryCloseText: {
+    color: '#FFFFFF',
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  galleryImageContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  galleryImage: {
+    width: '100%',
+    height: '70%',
+  },
+  galleryControls: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: 20,
+  },
+  galleryNavButton: {
+    padding: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 8,
+  },
+  galleryNavButtonDisabled: {
+    opacity: 0.3,
+  },
+  galleryNavText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  thumbnailStrip: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    padding: 20,
+    gap: 8,
+  },
+  thumbnail: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  thumbnailActive: {
+    borderColor: '#FFFFFF',
+  },
+  thumbnailImage: {
+    width: '100%',
+    height: '100%',
   },
 });
 
