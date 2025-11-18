@@ -413,19 +413,38 @@ export class ReviewService {
           orderBy: { column: 'created_at', ascending: false }
         });
         
-        return reviews.map((review: any) => ({
-          id: review.id,
-          listingId: review.listing_id || review.listingId,
-          reviewerId: review.reviewer_id || review.reviewerId,
-          reviewerName: review.reviewer_name || review.reviewerName || 'Anonymous',
-          rating: review.rating,
-          comment: review.comment || '',
-          title: review.title || undefined,
-          approved: review.approved || false,
-          bookingId: review.booking_id || review.bookingId,
-          createdAt: review.created_at || review.createdAt || '',
-          updatedAt: review.updated_at || review.updatedAt || '',
-        }));
+        console.log('getAllReviews: Raw reviews from database:', reviews.length);
+        
+        return reviews.map((review: any) => {
+          // Normalize approved field - handle boolean, string, null, undefined
+          let approvedValue = false;
+          if (review.approved === true || review.approved === 'true' || review.approved === 1) {
+            approvedValue = true;
+          } else if (review.approved === false || review.approved === 'false' || review.approved === 0) {
+            approvedValue = false;
+          } else if (review.approved === null || review.approved === undefined) {
+            approvedValue = false; // Default to false for null/undefined
+          }
+          
+          const normalized = {
+            id: review.id,
+            listingId: review.listing_id || review.listingId,
+            reviewerId: review.reviewer_id || review.reviewerId,
+            reviewerName: review.reviewer_name || review.reviewerName || 'Anonymous',
+            rating: review.rating,
+            comment: review.comment || '',
+            title: review.title || undefined,
+            approved: approvedValue,
+            bookingId: review.booking_id || review.bookingId,
+            images: review.images || [],
+            createdAt: review.created_at || review.createdAt || '',
+            updatedAt: review.updated_at || review.updatedAt || '',
+          };
+          
+          console.log(`Review ${normalized.id}: approved field normalized from "${review.approved}" (${typeof review.approved}) to ${approvedValue}`);
+          
+          return normalized;
+        });
       } else {
         return await LocalStorageService.getAll('reviews');
       }

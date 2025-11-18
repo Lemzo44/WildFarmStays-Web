@@ -26,7 +26,13 @@ export default function ReviewsManagement({ onNavigate }: ReviewsManagementProps
 
   const loadReviews = async () => {
     try {
+      console.log('Loading reviews...');
       const allReviews = await ReviewService.getAllReviews();
+      console.log('Loaded reviews:', allReviews.length);
+      // Log approved status for each review
+      allReviews.forEach((r: any) => {
+        console.log(`Review ${r.id}: approved =`, r.approved, 'type:', typeof r.approved);
+      });
       setReviews(allReviews);
     } catch (error) {
       console.error('Error loading reviews:', error);
@@ -97,8 +103,23 @@ export default function ReviewsManagement({ onNavigate }: ReviewsManagementProps
       // Update the review
       const updatedReview = await ReviewService.updateReview(reviewId, { approved: true });
       console.log('Review updated successfully:', updatedReview);
+      console.log('Updated review approved status:', updatedReview.approved);
       
-      // Reload reviews to reflect the change
+      // Update the review in the local state immediately
+      setReviews((prevReviews) => 
+        prevReviews.map((r: any) => 
+          r.id === reviewId 
+            ? { ...r, approved: true }
+            : r
+        )
+      );
+      
+      // Also update selectedReview if it's the one being approved
+      if (selectedReview && selectedReview.id === reviewId) {
+        setSelectedReview({ ...selectedReview, approved: true });
+      }
+      
+      // Reload reviews to get fresh data from database
       await loadReviews();
       
       // Close the modal
@@ -130,8 +151,23 @@ export default function ReviewsManagement({ onNavigate }: ReviewsManagementProps
       
       const updatedReview = await ReviewService.updateReview(reviewId, { approved: false });
       console.log('Review rejected successfully:', updatedReview);
+      console.log('Updated review approved status:', updatedReview.approved);
       
-      // Reload reviews to reflect the change
+      // Update the review in the local state immediately
+      setReviews((prevReviews) => 
+        prevReviews.map((r: any) => 
+          r.id === reviewId 
+            ? { ...r, approved: false }
+            : r
+        )
+      );
+      
+      // Also update selectedReview if it's the one being rejected
+      if (selectedReview && selectedReview.id === reviewId) {
+        setSelectedReview({ ...selectedReview, approved: false });
+      }
+      
+      // Reload reviews to get fresh data from database
       await loadReviews();
       
       // Close the modal
@@ -238,9 +274,19 @@ export default function ReviewsManagement({ onNavigate }: ReviewsManagementProps
   }
   if (filterStatus !== 'all') {
     if (filterStatus === 'approved') {
-      filteredReviews = filteredReviews.filter((r: any) => r.approved === true);
+      // Check for explicit true value (handle null, undefined, false)
+      filteredReviews = filteredReviews.filter((r: any) => {
+        const isApproved = r.approved === true || r.approved === 'true' || r.approved === 1;
+        console.log(`Review ${r.id} approved status:`, r.approved, 'isApproved:', isApproved);
+        return isApproved;
+      });
     } else if (filterStatus === 'pending') {
-      filteredReviews = filteredReviews.filter((r: any) => r.approved !== true);
+      // Check for anything that's not explicitly true
+      filteredReviews = filteredReviews.filter((r: any) => {
+        const isApproved = r.approved === true || r.approved === 'true' || r.approved === 1;
+        console.log(`Review ${r.id} approved status:`, r.approved, 'isPending:', !isApproved);
+        return !isApproved;
+      });
     }
   }
 
