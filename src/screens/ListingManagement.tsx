@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
 import { LocalStorageService } from '../services/LocalStorageService';
 import { APIService } from '../services/APIService';
 
@@ -82,135 +82,128 @@ export default function ListingManagement({ onNavigate, initialFilter }: Listing
   };
 
   const handleApproveListing = async (listingId: string) => {
-    Alert.alert(
-      'Approve Listing',
-      'Are you sure you want to approve this listing?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Approve',
-          onPress: async () => {
-            try {
-              console.log('Approving listing:', listingId);
-              
-              // Update both status (for approval workflow) and availability (for operational status)
-              const updateData = {
-                status: 'approved',
-                availability: 'available'
-              };
-              
-              console.log('Updating listing with:', updateData);
-              
-              let result;
-              // Try database function first (bypasses RLS with SECURITY DEFINER)
-              try {
-                result = await APIService.rpc('approve_listing', { listing_id_param: listingId });
-                console.log('Database function result:', result);
-                if (Array.isArray(result) && result.length > 0) {
-                  result = result[0];
-                } else if (Array.isArray(result) && result.length === 0) {
-                  throw new Error('Database function returned empty array - update may have failed');
-                }
-              } catch (rpcError: any) {
-                console.warn('Database function failed, trying direct update:', rpcError);
-                // Fallback to direct update if function doesn't exist or fails
-                try {
-                  result = await APIService.update('listings', listingId, updateData);
-                  console.log('Direct update result:', result);
-                  console.log('Update result status:', result?.status, result?.availability);
-                  console.log('Update result keys:', result ? Object.keys(result) : 'null');
-                  // Check if update actually returned data
-                  if (!result || (Array.isArray(result) && result.length === 0)) {
-                    throw new Error('Update returned empty result - RLS may be blocking the update');
-                  }
-                } catch (updateError: any) {
-                  console.error('Both update methods failed:', {
-                    rpcError: rpcError?.message,
-                    updateError: updateError?.message
-                  });
-                  throw rpcError || updateError; // Throw the most relevant error
-                }
-              }
-              
-              // Check if the update result already has the correct values
-              const resultStatus = result?.status || (result as any)?.status;
-              const resultAvailability = result?.availability || (result as any)?.availability;
-              
-              if (resultStatus === 'approved' && resultAvailability === 'available') {
-                console.log('Update result already shows correct values - update succeeded');
-              } else {
-                console.log('Update result shows:', { status: resultStatus, availability: resultAvailability });
-                console.log('Verifying update by fetching listing again...');
-                
-                // Wait a moment for the update to propagate
-                await new Promise(resolve => setTimeout(resolve, 300));
-                
-                // Verify the update by fetching the listing again
-                const verifyListing = await APIService.getById('listings', listingId);
-                console.log('Full verified listing object:', verifyListing);
-                
-                // Check if update actually worked (handle both snake_case and camelCase)
-                const actualStatus = verifyListing?.status || (verifyListing as any)?.status;
-                const actualAvailability = verifyListing?.availability || (verifyListing as any)?.availability;
-                
-                console.log('Verification check:', {
-                  expected: { status: 'approved', availability: 'available' },
-                  actual: { status: actualStatus, availability: actualAvailability }
-                });
-                
-                if (verifyListing && (actualStatus !== 'approved' || actualAvailability !== 'available')) {
-                  console.error('Update verification failed:', {
-                    expected: { status: 'approved', availability: 'available' },
-                    actual: { 
-                      status: actualStatus, 
-                      availability: actualAvailability,
-                      fullObject: verifyListing
-                    }
-                  });
-                  
-                  // Try one more time after a longer delay
-                  await new Promise(resolve => setTimeout(resolve, 500));
-                  const secondVerify = await APIService.getById('listings', listingId);
-                  const secondStatus = secondVerify?.status || (secondVerify as any)?.status;
-                  const secondAvailability = secondVerify?.availability || (secondVerify as any)?.availability;
-                  
-                  if (secondStatus !== 'approved' || secondAvailability !== 'available') {
-                    console.error('Second verification also failed:', {
-                      status: secondStatus,
-                      availability: secondAvailability
-                    });
-                    // Don't show warning - the update might have succeeded but RLS is blocking the read
-                    // Just proceed with success message
-                    console.warn('Verification failed but update may have succeeded - RLS may be blocking SELECT');
-                  } else {
-                    console.log('Second verification succeeded - update persisted');
-                  }
-                } else {
-                  console.log('Verification succeeded - update persisted correctly');
-                }
-              }
-              
-              // Reload listings to reflect the change
-              await loadListings();
-              
-              Alert.alert('Success', 'Listing approved successfully', [
-                { text: 'OK' }
-              ]);
-            } catch (error: any) {
-              console.error('Error approving listing:', error);
-              console.error('Full error details:', {
-                message: error?.message,
-                code: error?.code,
-                details: error?.details,
-                hint: error?.hint
-              });
-              const errorMessage = error?.message || error?.error_description || 'Unknown error';
-              Alert.alert('Error', `Failed to approve listing: ${errorMessage}`);
-            }
-          }
+    // Use window.confirm for web compatibility
+    const confirmed = window.confirm('Are you sure you want to approve this listing?');
+    
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      console.log('Approving listing:', listingId);
+      
+      // Update both status (for approval workflow) and availability (for operational status)
+      const updateData = {
+        status: 'approved',
+        availability: 'available'
+      };
+      
+      console.log('Updating listing with:', updateData);
+      
+      let result;
+      // Try database function first (bypasses RLS with SECURITY DEFINER)
+      try {
+        result = await APIService.rpc('approve_listing', { listing_id_param: listingId });
+        console.log('Database function result:', result);
+        if (Array.isArray(result) && result.length > 0) {
+          result = result[0];
+        } else if (Array.isArray(result) && result.length === 0) {
+          throw new Error('Database function returned empty array - update may have failed');
         }
-      ]
-    );
+      } catch (rpcError: any) {
+        console.warn('Database function failed, trying direct update:', rpcError);
+        // Fallback to direct update if function doesn't exist or fails
+        try {
+          result = await APIService.update('listings', listingId, updateData);
+          console.log('Direct update result:', result);
+          console.log('Update result status:', result?.status, result?.availability);
+          console.log('Update result keys:', result ? Object.keys(result) : 'null');
+          // Check if update actually returned data
+          if (!result || (Array.isArray(result) && result.length === 0)) {
+            throw new Error('Update returned empty result - RLS may be blocking the update');
+          }
+        } catch (updateError: any) {
+          console.error('Both update methods failed:', {
+            rpcError: rpcError?.message,
+            updateError: updateError?.message
+          });
+          throw rpcError || updateError; // Throw the most relevant error
+        }
+      }
+      
+      // Check if the update result already has the correct values
+      const resultStatus = result?.status || (result as any)?.status;
+      const resultAvailability = result?.availability || (result as any)?.availability;
+      
+      if (resultStatus === 'approved' && resultAvailability === 'available') {
+        console.log('Update result already shows correct values - update succeeded');
+      } else {
+        console.log('Update result shows:', { status: resultStatus, availability: resultAvailability });
+        console.log('Verifying update by fetching listing again...');
+        
+        // Wait a moment for the update to propagate
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // Verify the update by fetching the listing again
+        const verifyListing = await APIService.getById('listings', listingId);
+        console.log('Full verified listing object:', verifyListing);
+        
+        // Check if update actually worked (handle both snake_case and camelCase)
+        const actualStatus = verifyListing?.status || (verifyListing as any)?.status;
+        const actualAvailability = verifyListing?.availability || (verifyListing as any)?.availability;
+        
+        console.log('Verification check:', {
+          expected: { status: 'approved', availability: 'available' },
+          actual: { status: actualStatus, availability: actualAvailability }
+        });
+        
+        if (verifyListing && (actualStatus !== 'approved' || actualAvailability !== 'available')) {
+          console.error('Update verification failed:', {
+            expected: { status: 'approved', availability: 'available' },
+            actual: { 
+              status: actualStatus, 
+              availability: actualAvailability,
+              fullObject: verifyListing
+            }
+          });
+          
+          // Try one more time after a longer delay
+          await new Promise(resolve => setTimeout(resolve, 500));
+          const secondVerify = await APIService.getById('listings', listingId);
+          const secondStatus = secondVerify?.status || (secondVerify as any)?.status;
+          const secondAvailability = secondVerify?.availability || (secondVerify as any)?.availability;
+          
+          if (secondStatus !== 'approved' || secondAvailability !== 'available') {
+            console.error('Second verification also failed:', {
+              status: secondStatus,
+              availability: secondAvailability
+            });
+            // Don't show warning - the update might have succeeded but RLS is blocking the read
+            // Just proceed with success message
+            console.warn('Verification failed but update may have succeeded - RLS may be blocking SELECT');
+          } else {
+            console.log('Second verification succeeded - update persisted');
+          }
+        } else {
+          console.log('Verification succeeded - update persisted correctly');
+        }
+      }
+      
+      // Reload listings to reflect the change
+      await loadListings();
+      
+      window.alert('Listing approved successfully');
+    } catch (error: any) {
+      console.error('Error approving listing:', error);
+      console.error('Full error details:', {
+        message: error?.message,
+        code: error?.code,
+        details: error?.details,
+        hint: error?.hint
+      });
+      const errorMessage = error?.message || error?.error_description || 'Unknown error';
+      window.alert(`Error: Failed to approve listing: ${errorMessage}`);
+    }
   };
 
   const handleRejectListing = async (listingId: string) => {
@@ -218,97 +211,85 @@ export default function ListingManagement({ onNavigate, initialFilter }: Listing
     const rejectionReason = window.prompt('Please provide a reason for rejection and any recommendations for the farmer:');
     
     if (!rejectionReason || !rejectionReason.trim()) {
-      Alert.alert('Error', 'A rejection reason is required. The farmer needs to know why their listing was not approved.');
+      window.alert('Error: A rejection reason is required. The farmer needs to know why their listing was not approved.');
       return;
     }
 
-    Alert.alert(
-      'Reject Listing',
-      'Are you sure you want to reject this listing?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reject',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const listing = await APIService.getById('listings', listingId);
-              if (listing) {
-                // Update status to rejected and store rejection reason
-                await APIService.update('listings', listingId, {
-                  status: 'rejected',
-                  rejection_reason: rejectionReason
-                });
-                
-                Alert.alert('Success', 'Listing rejected. Farmer can see the feedback and resubmit.', [
-                  { text: 'OK', onPress: () => onNavigate?.('admin-dashboard') }
-                ]);
-              } else {
-                Alert.alert('Error', 'Listing not found');
-              }
-            } catch (error: any) {
-              console.error('Error rejecting listing:', error);
-              Alert.alert('Error', `Failed to reject listing: ${error.message || 'Unknown error'}`);
-            }
-          }
-        }
-      ]
-    );
+    // Use window.confirm for web compatibility
+    const confirmed = window.confirm('Are you sure you want to reject this listing?');
+    
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      const listing = await APIService.getById('listings', listingId);
+      if (listing) {
+        // Update status to rejected and store rejection reason
+        await APIService.update('listings', listingId, {
+          status: 'rejected',
+          rejection_reason: rejectionReason
+        });
+        
+        window.alert('Listing rejected. Farmer can see the feedback and resubmit.');
+        await loadListings();
+        onNavigate?.('admin-dashboard');
+      } else {
+        window.alert('Error: Listing not found');
+      }
+    } catch (error: any) {
+      console.error('Error rejecting listing:', error);
+      window.alert(`Error: Failed to reject listing: ${error.message || 'Unknown error'}`);
+    }
   };
 
   const handleSuspendListing = async (listingId: string) => {
-    Alert.alert(
-      'Suspend Listing',
-      'Are you sure you want to suspend this listing?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Suspend',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const listing = await APIService.getById('listings', listingId);
-              if (listing) {
-                await APIService.update('listings', listingId, {
-                  availability: 'suspended'
-                });
-                Alert.alert('Success', 'Listing suspended successfully', [
-                  { text: 'OK', onPress: () => loadListings() }
-                ]);
-              } else {
-                Alert.alert('Error', 'Listing not found');
-              }
-            } catch (error: any) {
-              console.error('Error suspending listing:', error);
-              Alert.alert('Error', `Failed to suspend listing: ${error.message || 'Unknown error'}`);
-            }
-          }
-        }
-      ]
-    );
+    // Use window.confirm for web compatibility
+    const confirmed = window.confirm('Are you sure you want to suspend this listing?');
+    
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      const listing = await APIService.getById('listings', listingId);
+      if (listing) {
+        await APIService.update('listings', listingId, {
+          availability: 'suspended'
+        });
+        window.alert('Listing suspended successfully');
+        await loadListings();
+      } else {
+        window.alert('Error: Listing not found');
+      }
+    } catch (error: any) {
+      console.error('Error suspending listing:', error);
+      window.alert(`Error: Failed to suspend listing: ${error.message || 'Unknown error'}`);
+    }
   };
 
   const handleDeleteListing = async (listingId: string) => {
-    Alert.alert(
-      'Delete Listing',
-      'Are you sure you want to permanently delete this listing?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await LocalStorageService.delete('listings', listingId);
-              Alert.alert('Success', 'Listing deleted successfully');
-              loadListings();
-            } catch (error) {
-              Alert.alert('Error', 'Failed to delete listing');
-            }
-          }
-        }
-      ]
-    );
+    // Use window.confirm for web compatibility
+    const confirmed = window.confirm('Are you sure you want to permanently delete this listing?');
+    
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      // Try Supabase first, then fallback to localStorage
+      try {
+        await APIService.update('listings', listingId, { status: 'deleted' });
+      } catch (error) {
+        // If Supabase update fails, try localStorage
+        await LocalStorageService.delete('listings', listingId);
+      }
+      window.alert('Listing deleted successfully');
+      await loadListings();
+    } catch (error) {
+      console.error('Error deleting listing:', error);
+      window.alert('Error: Failed to delete listing');
+    }
   };
 
   // Get unique locations for filter
