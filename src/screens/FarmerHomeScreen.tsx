@@ -106,8 +106,38 @@ export default function FarmerHomeScreen({ onNavigate }: FarmerHomeScreenProps =
         averageRating: 0, // TODO: Load actual average rating
       };
 
+      // Normalize booking status based on dates
+      const normalizeBookingStatus = (booking: any): string => {
+        // If already cancelled, keep it cancelled
+        if (booking.status === 'cancelled') {
+          return 'cancelled';
+        }
+
+        // Check if end date has passed
+        const endDateStr = booking.end_date || booking.endDate;
+        if (endDateStr) {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          
+          const endDate = new Date(endDateStr);
+          endDate.setHours(0, 0, 0, 0);
+          
+          // If end date has passed and not cancelled, mark as completed
+          if (endDate < today) {
+            return 'completed';
+          }
+        }
+
+        // Otherwise, return existing status (or default to pending)
+        return booking.status || 'pending';
+      };
+
       // Build recent bookings from real data
       const recentFromData = [...farmerBookings]
+        .map((b: any) => ({
+          ...b,
+          status: normalizeBookingStatus(b),
+        }))
         .sort((a: any, b: any) => {
           const ad = new Date(a.created_at || a.createdAt || a.endDate || a.end_date || 0).getTime();
           const bd = new Date(b.created_at || b.createdAt || b.endDate || b.end_date || 0).getTime();
@@ -321,8 +351,20 @@ export default function FarmerHomeScreen({ onNavigate }: FarmerHomeScreenProps =
                   {formatDate(booking.startDate)} - {formatDate(booking.endDate)}
                 </Text>
                 <View style={styles.bookingFooter}>
-                  <View style={[styles.statusChip, booking.status === 'confirmed' ? styles.confirmedChip : styles.pendingChip]}>
-                    <Text style={[styles.statusText, booking.status === 'confirmed' ? styles.confirmedText : styles.pendingText]}>
+                  <View style={[
+                    styles.statusChip, 
+                    booking.status === 'confirmed' ? styles.confirmedChip : 
+                    booking.status === 'completed' ? styles.completedChip :
+                    booking.status === 'cancelled' ? styles.cancelledChip :
+                    styles.pendingChip
+                  ]}>
+                    <Text style={[
+                      styles.statusText, 
+                      booking.status === 'confirmed' ? styles.confirmedText : 
+                      booking.status === 'completed' ? styles.completedText :
+                      booking.status === 'cancelled' ? styles.cancelledText :
+                      styles.pendingText
+                    ]}>
                       {booking.status}
                     </Text>
                   </View>
@@ -555,6 +597,12 @@ const styles = StyleSheet.create({
   pendingChip: {
     backgroundColor: '#FFF3E0',
   },
+  completedChip: {
+    backgroundColor: '#E3F2FD',
+  },
+  cancelledChip: {
+    backgroundColor: '#FFEBEE',
+  },
   statusText: {
     fontSize: 12,
     fontWeight: '500',
@@ -564,6 +612,12 @@ const styles = StyleSheet.create({
   },
   pendingText: {
     color: '#FF9800',
+  },
+  completedText: {
+    color: '#2196F3',
+  },
+  cancelledText: {
+    color: '#F44336',
   },
   priceText: {
     fontSize: 14,

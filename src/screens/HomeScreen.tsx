@@ -33,10 +33,37 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps = {}) {
     try {
       setLoading(true);
       
+      // Normalize booking status based on dates
+      const normalizeBookingStatus = (booking: any): string => {
+        // If already cancelled, keep it cancelled
+        if (booking.status === 'cancelled') {
+          return 'cancelled';
+        }
+
+        // Check if end date has passed
+        const endDateStr = booking.endDate || booking.end_date;
+        if (endDateStr) {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          
+          const endDate = new Date(endDateStr);
+          endDate.setHours(0, 0, 0, 0);
+          
+          // If end date has passed and not cancelled, mark as completed
+          if (endDate < today) {
+            return 'completed';
+          }
+        }
+
+        // Otherwise, return existing status (or default to pending)
+        return booking.status || 'pending';
+      };
+
       // Load bookings from Supabase when enabled; otherwise fallback to localStorage
       let userBookings: any[] = [];
       if (useSupabase && currentUser?.id) {
         userBookings = await BookingService.getUserBookings(currentUser.id, 'camper');
+        // Status is already normalized in BookingService.getUserBookings
         // Load user's reviews to hide the Write Review CTA for already reviewed listings
         try {
           const userReviews = await ReviewService.getUserReviews(currentUser.id);
@@ -50,9 +77,14 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps = {}) {
         }
       } else {
         const allBookings = await LocalStorageService.getAll('bookings');
-        userBookings = allBookings.filter((booking: any) => 
-          booking.camperId === currentUser?.id || booking.camperId === '1'
-        );
+        userBookings = allBookings
+          .filter((booking: any) => 
+            booking.camperId === currentUser?.id || booking.camperId === '1'
+          )
+          .map((booking: any) => ({
+            ...booking,
+            status: normalizeBookingStatus(booking),
+          }));
       }
 
       // Filter based on user role
@@ -192,8 +224,22 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps = {}) {
                   {formatDate(stay.startDate)} - {formatDate(stay.endDate)}
                 </Text>
                 <View style={styles.stayFooter}>
-                  <View style={styles.statusChip}>
-                    <Text style={styles.statusText}>{stay.status}</Text>
+                  <View style={[
+                    styles.statusChip,
+                    stay.status === 'confirmed' ? styles.confirmedChip :
+                    stay.status === 'completed' ? styles.completedChip :
+                    stay.status === 'cancelled' ? styles.cancelledChip :
+                    styles.pendingChip
+                  ]}>
+                    <Text style={[
+                      styles.statusText,
+                      stay.status === 'confirmed' ? styles.confirmedText :
+                      stay.status === 'completed' ? styles.completedText :
+                      stay.status === 'cancelled' ? styles.cancelledText :
+                      styles.pendingText
+                    ]}>
+                      {stay.status}
+                    </Text>
                   </View>
                   <Text style={styles.priceText}>£{(stay.totalPrice || stay.price || 0).toFixed(2)}</Text>
                 </View>
@@ -236,8 +282,22 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps = {}) {
                   {formatDate(stay.startDate)} - {formatDate(stay.endDate)}
                 </Text>
                 <View style={styles.stayFooter}>
-                  <View style={styles.statusChip}>
-                    <Text style={styles.statusText}>{stay.status}</Text>
+                  <View style={[
+                    styles.statusChip,
+                    stay.status === 'confirmed' ? styles.confirmedChip :
+                    stay.status === 'completed' ? styles.completedChip :
+                    stay.status === 'cancelled' ? styles.cancelledChip :
+                    styles.pendingChip
+                  ]}>
+                    <Text style={[
+                      styles.statusText,
+                      stay.status === 'confirmed' ? styles.confirmedText :
+                      stay.status === 'completed' ? styles.completedText :
+                      stay.status === 'cancelled' ? styles.cancelledText :
+                      styles.pendingText
+                    ]}>
+                      {stay.status}
+                    </Text>
                   </View>
                   <Text style={styles.priceText}>£{(stay.totalPrice || stay.price || 0).toFixed(2)}</Text>
                 </View>
@@ -449,15 +509,37 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   statusChip: {
-    backgroundColor: '#E8F5E8',
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 12,
   },
+  pendingChip: {
+    backgroundColor: '#FFF3E0',
+  },
+  confirmedChip: {
+    backgroundColor: '#E8F5E8',
+  },
+  completedChip: {
+    backgroundColor: '#E3F2FD',
+  },
+  cancelledChip: {
+    backgroundColor: '#FFEBEE',
+  },
   statusText: {
     fontSize: 12,
-    color: '#2E7D32',
     fontWeight: '500',
+  },
+  pendingText: {
+    color: '#FF9800',
+  },
+  confirmedText: {
+    color: '#2E7D32',
+  },
+  completedText: {
+    color: '#2196F3',
+  },
+  cancelledText: {
+    color: '#F44336',
   },
   priceText: {
     fontSize: 14,

@@ -254,6 +254,37 @@ export class BookingService {
   }
 
   /**
+   * Normalize booking status based on dates and current status
+   * - If cancelled, keep as cancelled
+   * - If end date has passed and not cancelled, mark as completed
+   * - Otherwise, keep existing status
+   */
+  static normalizeBookingStatus(booking: any): 'pending' | 'confirmed' | 'cancelled' | 'completed' {
+    // If already cancelled, keep it cancelled
+    if (booking.status === 'cancelled') {
+      return 'cancelled';
+    }
+
+    // Check if end date has passed
+    const endDateStr = booking.endDate || booking.end_date;
+    if (endDateStr) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const endDate = new Date(endDateStr);
+      endDate.setHours(0, 0, 0, 0);
+      
+      // If end date has passed and not cancelled, mark as completed
+      if (endDate < today) {
+        return 'completed';
+      }
+    }
+
+    // Otherwise, return existing status (or default to pending)
+    return booking.status || 'pending';
+  }
+
+  /**
    * Get all bookings for a user (camper or farmer)
    */
   static async getUserBookings(userId: string, userRole: 'camper' | 'farmer'): Promise<Booking[]> {
@@ -266,29 +297,42 @@ export class BookingService {
           orderBy: { column: 'created_at', ascending: false },
         });
 
-        return supaRows.map((r) => ({
-          id: r.id,
-          listingId: r.listing_id,
-          listingTitle: r.listing_title,
-          camperId: r.camper_id,
-          camperName: r.camper_name,
-          farmerId: r.farmer_id,
-          startDate: r.start_date,
-          endDate: r.end_date,
-          totalPrice: Number(r.total_price),
-          status: r.status,
-          waiverAccepted: !!r.waiver_accepted,
-          waiverType: r.waiver_type || undefined,
-          waiverAcceptedAt: r.waiver_accepted_at || undefined,
-          createdAt: r.created_at,
-          updatedAt: r.updated_at,
-        }));
+        return supaRows.map((r) => {
+          const booking = {
+            id: r.id,
+            listingId: r.listing_id,
+            listingTitle: r.listing_title,
+            camperId: r.camper_id,
+            camperName: r.camper_name,
+            farmerId: r.farmer_id,
+            startDate: r.start_date,
+            endDate: r.end_date,
+            totalPrice: Number(r.total_price),
+            status: r.status,
+            waiverAccepted: !!r.waiver_accepted,
+            waiverType: r.waiver_type || undefined,
+            waiverAcceptedAt: r.waiver_accepted_at || undefined,
+            createdAt: r.created_at,
+            updatedAt: r.updated_at,
+          };
+          
+          // Normalize status based on dates
+          booking.status = this.normalizeBookingStatus(booking);
+          
+          return booking;
+        });
       }
 
       const allBookings = await LocalStorageService.getAll('bookings');
-      return userRole === 'camper'
+      const userBookings = userRole === 'camper'
         ? allBookings.filter((booking: Booking) => booking.camperId === userId)
         : allBookings.filter((booking: Booking) => booking.farmerId === userId);
+      
+      // Normalize status for all bookings
+      return userBookings.map((booking: any) => ({
+        ...booking,
+        status: this.normalizeBookingStatus(booking),
+      }));
     } catch (error) {
       console.error('Error getting user bookings:', error);
       throw new Error('Failed to get user bookings');

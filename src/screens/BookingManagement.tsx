@@ -23,6 +23,32 @@ export default function BookingManagement({ onNavigate }: BookingManagementProps
     applyFilters();
   }, [searchQuery, filterStatus, sortBy]);
 
+  // Normalize booking status based on dates
+  const normalizeBookingStatus = (booking: any): string => {
+    // If already cancelled, keep it cancelled
+    if (booking.status === 'cancelled') {
+      return 'cancelled';
+    }
+
+    // Check if end date has passed
+    const endDateStr = booking.endDate || booking.end_date;
+    if (endDateStr) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const endDate = new Date(endDateStr);
+      endDate.setHours(0, 0, 0, 0);
+      
+      // If end date has passed and not cancelled, mark as completed
+      if (endDate < today) {
+        return 'completed';
+      }
+    }
+
+    // Otherwise, return existing status (or default to pending)
+    return booking.status || 'pending';
+  };
+
   const loadBookings = async () => {
     try {
       let allBookings: any[] = [];
@@ -47,6 +73,9 @@ export default function BookingManagement({ onNavigate }: BookingManagementProps
               listingTitle: booking.listing_title || booking.listingTitle,
               camperName: booking.camper_name || booking.camperName,
             };
+            
+            // Normalize status based on dates
+            normalized.status = normalizeBookingStatus(normalized);
             
             // Fetch listing and camper names if not already present
             if (!normalized.listingTitle && normalized.listingId) {
@@ -74,6 +103,11 @@ export default function BookingManagement({ onNavigate }: BookingManagementProps
         );
       } else {
         allBookings = await LocalStorageService.getAll('bookings');
+        // Normalize status for localStorage bookings
+        allBookings = allBookings.map((booking: any) => ({
+          ...booking,
+          status: normalizeBookingStatus(booking),
+        }));
       }
       
       setBookings(allBookings);
@@ -92,18 +126,28 @@ export default function BookingManagement({ onNavigate }: BookingManagementProps
         });
         
         // Normalize bookings
-        allBookings = allBookings.map((b: any) => ({
-          ...b,
-          camperId: b.camper_id || b.camperId,
-          listingTitle: b.listing_title || b.listingTitle,
-          camperName: b.camper_name || b.camperName,
-          startDate: b.start_date || b.startDate,
-          endDate: b.end_date || b.endDate,
-          totalPrice: b.total_price || b.totalPrice,
-          createdAt: b.created_at || b.createdAt,
-        }));
+        allBookings = allBookings.map((b: any) => {
+          const normalized = {
+            ...b,
+            camperId: b.camper_id || b.camperId,
+            listingTitle: b.listing_title || b.listingTitle,
+            camperName: b.camper_name || b.camperName,
+            startDate: b.start_date || b.startDate,
+            endDate: b.end_date || b.endDate,
+            totalPrice: b.total_price || b.totalPrice,
+            createdAt: b.created_at || b.createdAt,
+          };
+          // Normalize status based on dates
+          normalized.status = normalizeBookingStatus(normalized);
+          return normalized;
+        });
       } else {
         allBookings = await LocalStorageService.getAll('bookings');
+        // Normalize status for localStorage bookings
+        allBookings = allBookings.map((booking: any) => ({
+          ...booking,
+          status: normalizeBookingStatus(booking),
+        }));
       }
 
       // Filter by search query
