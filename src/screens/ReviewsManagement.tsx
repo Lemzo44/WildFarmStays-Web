@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Image } from 'react-native';
 import { ReviewService } from '../services/ReviewService';
 import { APIService } from '../services/APIService';
 import { useSupabase } from '../lib/supabase';
@@ -77,117 +77,96 @@ export default function ReviewsManagement({ onNavigate }: ReviewsManagementProps
       setShowDetailsModal(true);
     } catch (error) {
       console.error('Error loading review details:', error);
-      Alert.alert('Error', 'Failed to load review details');
+      window.alert('Error: Failed to load review details');
     } finally {
       setLoading(false);
     }
   };
 
   const handleApproveReview = async (reviewId: string) => {
-    Alert.alert(
-      'Approve Review',
-      'Are you sure you want to approve this review? It will be visible to all users.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Approve',
-          onPress: async () => {
-            try {
-              console.log('Approving review:', reviewId);
-              
-              // Update the review
-              const updatedReview = await ReviewService.updateReview(reviewId, { approved: true });
-              console.log('Review updated successfully:', updatedReview);
-              
-              // Reload reviews to reflect the change
-              await loadReviews();
-              
-              // Close the modal
-              setShowDetailsModal(false);
-              
-              Alert.alert('Success', 'Review approved successfully', [
-                { text: 'OK' }
-              ]);
-            } catch (error: any) {
-              console.error('Error approving review:', error);
-              console.error('Error details:', {
-                message: error?.message,
-                code: error?.code,
-                details: error?.details,
-                hint: error?.hint
-              });
-              Alert.alert('Error', error?.message || 'Failed to approve review. Please check the console for details.');
-            }
-          }
-        }
-      ]
-    );
+    // Use window.confirm for web compatibility
+    const confirmed = window.confirm('Are you sure you want to approve this review? It will be visible to all users.');
+    
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      console.log('Approving review:', reviewId);
+      
+      // Update the review
+      const updatedReview = await ReviewService.updateReview(reviewId, { approved: true });
+      console.log('Review updated successfully:', updatedReview);
+      
+      // Reload reviews to reflect the change
+      await loadReviews();
+      
+      // Close the modal
+      setShowDetailsModal(false);
+      
+      window.alert('Review approved successfully');
+    } catch (error: any) {
+      console.error('Error approving review:', error);
+      console.error('Error details:', {
+        message: error?.message,
+        code: error?.code,
+        details: error?.details,
+        hint: error?.hint
+      });
+      window.alert(`Error: ${error?.message || 'Failed to approve review. Please check the console for details.'}`);
+    }
   };
 
   const handleRejectReview = async (reviewId: string) => {
-    Alert.alert(
-      'Reject Review',
-      'Are you sure you want to reject this review? It will be removed from public view.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reject',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              console.log('Rejecting review:', reviewId);
-              
-              const updatedReview = await ReviewService.updateReview(reviewId, { approved: false });
-              console.log('Review rejected successfully:', updatedReview);
-              
-              // Reload reviews to reflect the change
-              await loadReviews();
-              
-              // Close the modal
-              setShowDetailsModal(false);
-              
-              Alert.alert('Success', 'Review rejected', [
-                { text: 'OK' }
-              ]);
-            } catch (error: any) {
-              console.error('Error rejecting review:', error);
-              console.error('Error details:', {
-                message: error?.message,
-                code: error?.code,
-                details: error?.details,
-                hint: error?.hint
-              });
-              Alert.alert('Error', error?.message || 'Failed to reject review. Please check the console for details.');
-            }
-          }
-        }
-      ]
-    );
+    // Use window.confirm for web compatibility
+    const confirmed = window.confirm('Are you sure you want to reject this review? It will be removed from public view.');
+    
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      console.log('Rejecting review:', reviewId);
+      
+      const updatedReview = await ReviewService.updateReview(reviewId, { approved: false });
+      console.log('Review rejected successfully:', updatedReview);
+      
+      // Reload reviews to reflect the change
+      await loadReviews();
+      
+      // Close the modal
+      setShowDetailsModal(false);
+      
+      window.alert('Review rejected');
+    } catch (error: any) {
+      console.error('Error rejecting review:', error);
+      console.error('Error details:', {
+        message: error?.message,
+        code: error?.code,
+        details: error?.details,
+        hint: error?.hint
+      });
+      window.alert(`Error: ${error?.message || 'Failed to reject review. Please check the console for details.'}`);
+    }
   };
 
   const handleRemoveReview = async (reviewId: string) => {
-    Alert.alert(
-      'Remove Review',
-      'Are you sure you want to permanently delete this review? This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await ReviewService.deleteReview(reviewId);
-              Alert.alert('Success', 'Review removed');
-              setShowDetailsModal(false);
-              loadReviews();
-            } catch (error: any) {
-              console.error('Error removing review:', error);
-              Alert.alert('Error', error?.message || 'Failed to remove review');
-            }
-          }
-        }
-      ]
-    );
+    // Use window.confirm for web compatibility
+    const confirmed = window.confirm('Are you sure you want to permanently delete this review? This action cannot be undone.');
+    
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await ReviewService.deleteReview(reviewId);
+      window.alert('Review removed');
+      setShowDetailsModal(false);
+      loadReviews();
+    } catch (error: any) {
+      console.error('Error removing review:', error);
+      window.alert(`Error: ${error?.message || 'Failed to remove review'}`);
+    }
   };
 
   const normalizeReviewImages = (review: any): string[] => {
