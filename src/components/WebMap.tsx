@@ -51,9 +51,9 @@ export default function WebMap({ region, listings, onMarkerPress, style }: WebMa
       return;
     }
 
-    // Load Google Maps script
+    // Load Google Maps script with async loading
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&loading=async`;
     script.async = true;
     script.defer = true;
     script.onload = () => {
@@ -127,6 +127,16 @@ export default function WebMap({ region, listings, onMarkerPress, style }: WebMa
         return;
       }
 
+      // Create a custom marker icon using a simple SVG without emoji
+      const markerIcon = {
+        path: window.google.maps.SymbolPath.CIRCLE,
+        scale: 10,
+        fillColor: '#2E7D32',
+        fillOpacity: 1,
+        strokeColor: '#FFFFFF',
+        strokeWeight: 2,
+      };
+
       const marker = new window.google.maps.Marker({
         position: {
           lat: parseFloat(listing.latitude),
@@ -134,16 +144,7 @@ export default function WebMap({ region, listings, onMarkerPress, style }: WebMa
         },
         map: mapInstanceRef.current,
         title: listing.title,
-        icon: {
-          url: 'data:image/svg+xml;base64,' + btoa(`
-            <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="16" cy="16" r="12" fill="#2E7D32" stroke="#FFFFFF" stroke-width="2"/>
-              <text x="16" y="20" font-size="16" fill="#FFFFFF" text-anchor="middle">🏕️</text>
-            </svg>
-          `),
-          scaledSize: new window.google.maps.Size(32, 32),
-          anchor: new window.google.maps.Point(16, 16),
-        },
+        icon: markerIcon,
       });
 
       // Create info window
