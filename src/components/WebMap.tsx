@@ -57,7 +57,23 @@ export default function WebMap({ region, listings, onMarkerPress, style }: WebMa
     script.async = true;
     script.defer = true;
     script.onload = () => {
-      setIsLoaded(true);
+      // Wait a moment for Google Maps to fully initialize
+      setTimeout(() => {
+        if (window.google && window.google.maps && window.google.maps.Map) {
+          setIsLoaded(true);
+          console.log('✅ Google Maps API loaded successfully');
+        } else {
+          console.warn('⚠️ Google Maps script loaded but API not ready');
+          // Try again after a short delay
+          setTimeout(() => {
+            if (window.google && window.google.maps && window.google.maps.Map) {
+              setIsLoaded(true);
+            } else {
+              setLoadError('Google Maps API failed to initialize');
+            }
+          }, 500);
+        }
+      }, 100);
     };
     script.onerror = () => {
       setLoadError('Failed to load Google Maps');
@@ -76,7 +92,13 @@ export default function WebMap({ region, listings, onMarkerPress, style }: WebMa
 
   // Initialize map when Google Maps is loaded
   useEffect(() => {
-    if (!isLoaded || !mapRef.current || !window.google) return;
+    if (!isLoaded || !mapRef.current) return;
+    
+    // Wait for Google Maps to be fully available
+    if (!window.google || !window.google.maps || !window.google.maps.Map) {
+      console.warn('Google Maps API not fully loaded yet');
+      return;
+    }
 
     const center = {
       lat: region.latitude,
@@ -88,25 +110,35 @@ export default function WebMap({ region, listings, onMarkerPress, style }: WebMa
 
     // Initialize map
     if (!mapInstanceRef.current) {
-      mapInstanceRef.current = new window.google.maps.Map(mapRef.current, {
-        center,
-        zoom: Math.max(zoom, 6), // Minimum zoom level
-        mapTypeControl: true,
-        streetViewControl: false,
-        fullscreenControl: true,
-        zoomControl: true,
-        styles: [
-          {
-            featureType: 'poi',
-            elementType: 'labels',
-            stylers: [{ visibility: 'off' }],
-          },
-        ],
-      });
+      try {
+        mapInstanceRef.current = new window.google.maps.Map(mapRef.current, {
+          center,
+          zoom: Math.max(zoom, 6), // Minimum zoom level
+          mapTypeControl: true,
+          streetViewControl: false,
+          fullscreenControl: true,
+          zoomControl: true,
+          styles: [
+            {
+              featureType: 'poi',
+              elementType: 'labels',
+              stylers: [{ visibility: 'off' }],
+            },
+          ],
+        });
+        console.log('✅ Google Map initialized successfully');
+      } catch (error) {
+        console.error('❌ Error initializing Google Map:', error);
+        setLoadError('Failed to initialize map');
+      }
     } else {
       // Update map center and zoom if region changes
-      mapInstanceRef.current.setCenter(center);
-      mapInstanceRef.current.setZoom(Math.max(zoom, 6));
+      try {
+        mapInstanceRef.current.setCenter(center);
+        mapInstanceRef.current.setZoom(Math.max(zoom, 6));
+      } catch (error) {
+        console.error('Error updating map:', error);
+      }
     }
   }, [isLoaded, region]);
 
