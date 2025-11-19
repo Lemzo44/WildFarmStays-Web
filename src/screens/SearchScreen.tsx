@@ -7,7 +7,6 @@ import { APIService } from '../services/APIService';
 import { useSupabase } from '../lib/supabase';
 import { ReviewService } from '../services/ReviewService';
 import WebMap from '../components/WebMap';
-import WebMarker from '../components/WebMarker';
 
 interface SearchScreenProps {
   onNavigate?: (screen: string, data?: any) => void;
@@ -276,19 +275,12 @@ export default function SearchScreen({ onNavigate }: SearchScreenProps = {}) {
 
       <WebMap
         region={region}
-        listings={filteredListings}
+        listings={filteredListings.filter((listing: any) => 
+          listing.latitude && listing.longitude
+        )}
+        onMarkerPress={handleMarkerPress}
         style={styles.map}
-      >
-        {filteredListings.map((listing: any) => (
-          <WebMarker
-            key={listing.id}
-            coordinate={{ latitude: listing.latitude, longitude: listing.longitude }}
-            title={listing.title}
-            description={`£${listing.price}/night • ${listing.wildnessRating}/5 wildness • ${listing.location}`}
-            onPress={() => handleMarkerPress(listing)}
-          />
-        ))}
-      </WebMap>
+      />
 
       {filteredListings.length > 0 && (
         <View style={styles.resultsCard}>

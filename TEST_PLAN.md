@@ -1,8 +1,8 @@
-# End-to-End Test Plan for Supabase Migration
+# End-to-End Test Plan for WildFarmStays Web Application
 
-**Version:** 1.0  
-**Date:** 2024  
-**Scope:** Complete validation of all migrated features from localStorage to Supabase
+**Version:** 2.0  
+**Last Updated:** 2024  
+**Scope:** Complete validation of all features including Supabase integration, AWS Amplify deployment, and recent fixes
 
 ---
 
@@ -10,10 +10,15 @@
 
 ### Prerequisites
 1. **Environment Configuration**
-   - ✅ `VITE_USE_SUPABASE=true` in `.env`
+   - ✅ `VITE_USE_SUPABASE=true` in environment variables (AWS Amplify)
+   - ✅ `VITE_SUPABASE_URL` configured in AWS Amplify
+   - ✅ `VITE_SUPABASE_ANON_KEY` configured in AWS Amplify
    - ✅ Supabase project created and schema deployed
    - ✅ Email provider enabled in Supabase Auth dashboard
-   - ✅ Test Supabase project URL and anon key configured
+   - ✅ Database functions deployed:
+     - `approve_listing()` function
+     - `suspend_listing()` function
+     - `reactivate_listing()` function
 
 2. **Initial Data**
    - Register at least 1 camper user via app
@@ -47,10 +52,12 @@
 **Prerequisites:** No existing account
 
 **Steps:**
-1. Navigate to Registration page
-2. Select "Camper" role
-3. Fill in: Name, Email (new), Phone, Password, Confirm Password
-4. Click "Register"
+1. Navigate to Registration page (from Join Camper screen or landing page)
+2. Verify all form fields are empty/cleared
+3. Select "Camper" role
+4. Fill in: First Name, Last Name, Email (new), Phone, Password, Confirm Password
+5. Click "Create Account"
+6. Verify form fields are cleared after submission
 
 **Expected Results:**
 - ✅ User appears in Supabase `auth.users` table
@@ -58,13 +65,17 @@
   - `role = 'camper'`
   - `first_name`, `last_name`, `email`, `phone` populated
   - `id` matches `auth.users.id`
-- ✅ User automatically logged in
-- ✅ Dashboard shows camper home screen
+- ✅ User is NOT automatically logged in
+- ✅ Alert shows: "Registration Successful! Your account has been created. Please log in to continue."
+- ✅ User is redirected to Login screen
+- ✅ All form fields are cleared after registration
 
 **Failure Criteria:**
 - User not in `auth.users`
 - Profile missing or incomplete
-- Login fails after registration
+- User is automatically logged in (should NOT happen)
+- Form fields persist after registration
+- User not redirected to login screen
 
 ---
 
@@ -73,20 +84,27 @@
 **Prerequisites:** No existing account
 
 **Steps:**
-1. Navigate to Registration page
-2. Select "Farmer" role
-3. Fill in: All required fields (including farm name, address, postcode, county)
-4. Submit form
+1. Navigate to Registration page (from Join Host screen or landing page)
+2. Verify all form fields are empty/cleared
+3. Select "Farmer" role
+4. Fill in: All required fields (First Name, Last Name, Email, Phone, Password, Confirm Password, Farm Name, Farm Address, Postcode)
+5. Click "Create Account"
+6. Verify form fields are cleared after submission
 
 **Expected Results:**
 - ✅ Profile in `public.profiles` has:
   - `role = 'farmer'`
-  - `farm_name`, `farm_address`, `postcode`, `county` populated
-- ✅ User can navigate to Farmer Dashboard
+  - `farm_name`, `farm_address`, `postcode` populated
+- ✅ User is NOT automatically logged in
+- ✅ Alert shows: "Registration Successful! Your account has been created. Please log in to continue."
+- ✅ User is redirected to Login screen
+- ✅ All form fields are cleared after registration
 
 **Failure Criteria:**
 - Farm details missing from profile
 - Role incorrect
+- User is automatically logged in (should NOT happen)
+- Form fields persist after registration
 
 ---
 
@@ -214,7 +232,57 @@
 
 ---
 
-#### TEST 2.4: Edit Listing (Farmer)
+#### TEST 2.4: Admin Suspend Listing
+**Priority:** Medium  
+**Prerequisites:** Approved/Active listing, Admin logged in
+
+**Steps:**
+1. Navigate to Listing Management screen
+2. Filter by "Active" listings
+3. Find an active listing
+4. Click "Suspend" button
+5. Confirm suspension
+
+**Expected Results:**
+- ✅ Listing `availability = 'suspended'` in database
+- ✅ On-screen confirmation: "Listing suspended successfully"
+- ✅ Listing appears when filtering by "Suspended"
+- ✅ Listing NOT visible to campers (suspended listings hidden)
+- ✅ "Suspend" button replaced with "Reactivate" button
+
+**Failure Criteria:**
+- Availability not updated in database
+- Listing doesn't appear in Suspended filter
+- Listing still visible to campers
+
+---
+
+#### TEST 2.5: Admin Reactivate Listing
+**Priority:** Medium  
+**Prerequisites:** Suspended listing, Admin logged in
+
+**Steps:**
+1. Navigate to Listing Management screen
+2. Filter by "Suspended" listings
+3. Find a suspended listing
+4. Click "Reactivate" button
+5. Confirm reactivation
+
+**Expected Results:**
+- ✅ Listing `availability = 'available'` in database
+- ✅ On-screen confirmation: "Listing reactivated successfully"
+- ✅ Listing appears when filtering by "Active"
+- ✅ Listing visible to campers again
+- ✅ "Reactivate" button replaced with "Suspend" button
+
+**Failure Criteria:**
+- Availability not updated in database
+- Listing doesn't appear in Active filter
+- Listing not visible to campers
+
+---
+
+#### TEST 2.6: Edit Listing (Farmer)
 **Priority:** High  
 **Prerequisites:** Approved listing owned by logged-in farmer
 
@@ -236,7 +304,7 @@
 
 ---
 
-#### TEST 2.5: Camper Views Approved Listings
+#### TEST 2.7: Camper Views Approved Listings
 **Priority:** Critical  
 **Prerequisites:** At least 1 approved listing exists
 
@@ -339,6 +407,8 @@
 1. Log in as camper
 2. Navigate to Home screen
 3. Check "Upcoming Stays" section
+4. Check "Recent Stays" section
+5. Verify booking statuses
 
 **Expected Results:**
 - ✅ Bookings loaded from Supabase (not localStorage)
@@ -347,10 +417,48 @@
   - Dates
   - Status
 - ✅ Both upcoming and recent stays populated if data exists
+- ✅ Booking status correctly normalized:
+  - Bookings with end date in past → Status shows "completed"
+  - Cancelled bookings → Status shows "cancelled"
+  - Future bookings → Status shows "pending" or "confirmed"
+- ✅ Status badges display with correct colors
 
 **Failure Criteria:**
 - No bookings shown (but exist in database)
 - Data from localStorage instead of Supabase
+- All bookings show as "pending" regardless of date/status
+- Status not updating based on dates
+
+---
+
+#### TEST 3.4a: Home Screen Quick Actions Buttons
+**Priority:** Medium  
+**Prerequisites:** New camper user (no bookings/favorites yet)
+
+**Steps:**
+1. Log in as a new camper (first time login)
+2. Navigate to Home screen
+3. Verify "Quick Actions" section is visible
+4. Click "Search Map" button
+5. Verify navigation to Search Screen
+6. Navigate back to Home
+7. Click "Browse Farms" button
+8. Verify navigation to Listings Screen
+9. Navigate back to Home
+10. If no bookings/favorites exist, verify empty state section
+11. Click "Search Map" in empty state
+12. Click "Discover Farms" in empty state
+
+**Expected Results:**
+- ✅ "Search Map" button navigates to Search Screen
+- ✅ "Browse Farms" button navigates to Listings Screen
+- ✅ Empty state buttons also navigate correctly
+- ✅ All buttons are clickable and functional
+
+**Failure Criteria:**
+- Buttons don't navigate
+- Buttons appear but do nothing when clicked
+- Empty state buttons missing navigation handlers
 
 ---
 
@@ -419,18 +527,28 @@
 
 #### TEST 4.2: View Reviews on Listing
 **Priority:** Medium  
-**Prerequisites:** Listing with reviews
+**Prerequisites:** Listing with reviews (including reviews with photos)
 
 **Steps:**
 1. View listing with reviews
 2. Navigate to Reviews section
 3. Check review display
+4. Verify review photos display
 
 **Expected Results:**
 - ✅ Reviews fetched from Supabase
 - ✅ Reviewer names fetched from `profiles` table
 - ✅ Only approved reviews visible (if moderation enabled)
 - ✅ Statistics (average rating, review count) correct
+- ✅ Review photos display correctly (not just text)
+- ✅ Photos stored in `reviews` table `images` field are visible
+- ✅ Reviews show correct listing (not all farms showing same reviews)
+
+**Failure Criteria:**
+- Reviews not displaying
+- Review photos not showing (only text visible)
+- All farms showing same reviews (incorrect listing_id filtering)
+- Reviewer names not displaying
 
 ---
 
@@ -921,20 +1039,27 @@ These should be verified as part of the full test run:
 
 ## Final Verification Checklist
 
-Before marking migration complete, verify:
+Before marking testing complete, verify:
 
-- [ ] All critical tests passing (TEST 1.1 - 3.4)
+- [ ] All critical tests passing (TEST 1.1 - 3.5)
 - [ ] All data operations saving to Supabase
 - [ ] No console errors during normal usage
 - [ ] RLS policies working correctly
 - [ ] Field mapping verified (snake_case ↔ camelCase)
 - [ ] All major user flows working:
-  - [ ] Camper: Register → Browse → Book → Review
-  - [ ] Farmer: Register → Create Listing → Manage Bookings
-  - [ ] Admin: Approve Listings → Manage Bookings → View Users → Manage Tickets
+  - [ ] Camper: Register → Login → Browse → Book → Review
+  - [ ] Farmer: Register → Login → Create Listing → Manage Bookings
+  - [ ] Admin: Approve/Suspend/Reactivate Listings → Manage Bookings → View Users → Manage Tickets → Approve Reviews
 - [ ] Waiver system functional (ROI vs NI)
-- [ ] Navigation working correctly
+- [ ] Navigation working correctly (all buttons functional)
 - [ ] Data persists across page refreshes
+- [ ] Registration redirects to login (not auto-login)
+- [ ] Form fields clear on registration screen
+- [ ] Home screen buttons work correctly (Search Map, Browse Farms)
+- [ ] Booking status normalization working (completed/cancelled based on dates)
+- [ ] Review photos display on listings
+- [ ] Listing suspend/reactivate functionality working
+- [ ] AWS Amplify deployment successful
 
 ---
 
