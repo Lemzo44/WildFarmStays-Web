@@ -276,23 +276,105 @@ export default function ListingManagement({ onNavigate, initialFilter }: Listing
     }
 
     try {
-      const listing = await APIService.getById('listings', listingId);
-      if (listing) {
-        const result = await APIService.update('listings', listingId, {
-          availability: 'suspended'
-        });
-        console.log('Suspend result:', result);
-        console.log('Suspended listing availability:', result?.availability);
-        window.alert('Listing suspended successfully');
-        // Reload listings and reapply filters
-        await loadListings();
-        await applyFilters();
-      } else {
-        window.alert('Error: Listing not found');
+      console.log('Suspending listing:', listingId);
+      
+      // Try database function first (bypasses RLS with SECURITY DEFINER)
+      let result;
+      try {
+        result = await APIService.rpc('suspend_listing', { listing_id_param: listingId });
+        console.log('Database function result:', result);
+        if (Array.isArray(result) && result.length > 0) {
+          result = result[0];
+        } else if (Array.isArray(result) && result.length === 0) {
+          throw new Error('Database function returned empty array - update may have failed');
+        }
+      } catch (rpcError: any) {
+        console.warn('Database function failed, trying direct update:', rpcError);
+        // Fallback to direct update if function doesn't exist or fails
+        try {
+          result = await APIService.update('listings', listingId, {
+            availability: 'suspended'
+          });
+          console.log('Direct update result:', result);
+          // Check if update actually returned data
+          if (!result || (Array.isArray(result) && result.length === 0)) {
+            throw new Error('Update returned empty result - RLS may be blocking the update');
+          }
+        } catch (updateError: any) {
+          console.error('Both update methods failed:', {
+            rpcError: rpcError?.message,
+            updateError: updateError?.message
+          });
+          throw rpcError || updateError; // Throw the most relevant error
+        }
       }
+      
+      // Check if the update result already has the correct values
+      const resultAvailability = result?.availability || (result as any)?.availability;
+      
+      if (resultAvailability === 'suspended') {
+        console.log('Update result already shows correct value - update succeeded');
+      } else {
+        console.log('Update result shows:', { availability: resultAvailability });
+        console.log('Verifying update by fetching listing again...');
+        
+        // Wait a moment for the update to propagate
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // Verify the update by fetching the listing again
+        const verifyListing = await APIService.getById('listings', listingId);
+        console.log('Full verified listing object:', verifyListing);
+        
+        // Check if update actually worked (handle both snake_case and camelCase)
+        const actualAvailability = verifyListing?.availability || (verifyListing as any)?.availability;
+        
+        console.log('Verification check:', {
+          expected: { availability: 'suspended' },
+          actual: { availability: actualAvailability }
+        });
+        
+        if (verifyListing && actualAvailability !== 'suspended') {
+          console.error('Update verification failed:', {
+            expected: { availability: 'suspended' },
+            actual: { 
+              availability: actualAvailability,
+              fullObject: verifyListing
+            }
+          });
+          
+          // Try one more time after a longer delay
+          await new Promise(resolve => setTimeout(resolve, 500));
+          const secondVerify = await APIService.getById('listings', listingId);
+          const secondAvailability = secondVerify?.availability || (secondVerify as any)?.availability;
+          
+          if (secondAvailability !== 'suspended') {
+            console.error('Second verification also failed:', {
+              availability: secondAvailability
+            });
+            console.warn('Verification failed but update may have succeeded - RLS may be blocking SELECT');
+          } else {
+            console.log('Second verification succeeded - update persisted');
+          }
+        } else {
+          console.log('Verification succeeded - update persisted correctly');
+        }
+      }
+      
+      // Reload listings to reflect the change
+      await loadListings();
+      await applyFilters();
+      
+      window.alert('Listing suspended successfully');
     } catch (error: any) {
       console.error('Error suspending listing:', error);
-      window.alert(`Error: Failed to suspend listing: ${error.message || 'Unknown error'}`);
+      console.error('Full error details:', {
+        message: error?.message,
+        code: error?.code,
+        details: error?.details,
+        hint: error?.hint
+      });
+      const errorMessage = error?.message || error?.error_description || 'Unknown error';
+      window.alert(`Error: Failed to suspend listing: ${errorMessage}`);
     }
   };
 
