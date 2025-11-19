@@ -27,6 +27,9 @@ export default function WebMap({ region, listings, onMarkerPress, style }: WebMa
   const markersRef = useRef<any[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  
+  // Get Map ID from environment (optional - only needed for AdvancedMarkerElement)
+  const mapId = import.meta.env.VITE_GOOGLE_MAPS_MAP_ID;
 
   // Load Google Maps script
   useEffect(() => {
@@ -111,7 +114,7 @@ export default function WebMap({ region, listings, onMarkerPress, style }: WebMa
     // Initialize map
     if (!mapInstanceRef.current) {
       try {
-        mapInstanceRef.current = new window.google.maps.Map(mapRef.current, {
+        const mapOptions: any = {
           center,
           zoom: Math.max(zoom, 6), // Minimum zoom level
           mapTypeControl: true,
@@ -125,8 +128,15 @@ export default function WebMap({ region, listings, onMarkerPress, style }: WebMa
               stylers: [{ visibility: 'off' }],
             },
           ],
-        });
-        console.log('✅ Google Map initialized successfully');
+        };
+        
+        // Add Map ID if available (required for AdvancedMarkerElement)
+        if (mapId) {
+          mapOptions.mapId = mapId;
+        }
+        
+        mapInstanceRef.current = new window.google.maps.Map(mapRef.current, mapOptions);
+        console.log('✅ Google Map initialized successfully', mapId ? '(with Map ID)' : '(using classic markers)');
       } catch (error) {
         console.error('❌ Error initializing Google Map:', error);
         setLoadError('Failed to initialize map');
@@ -156,8 +166,11 @@ export default function WebMap({ region, listings, onMarkerPress, style }: WebMa
     });
     markersRef.current = [];
 
-    // Check if AdvancedMarkerElement is available (new API) or fallback to Marker (deprecated but still works)
-    const useAdvancedMarkers = window.google.maps.marker && window.google.maps.marker.AdvancedMarkerElement;
+    // Check if AdvancedMarkerElement is available AND we have a Map ID
+    // AdvancedMarkerElement requires a Map ID to work properly
+    const useAdvancedMarkers = mapId && 
+                                window.google.maps.marker && 
+                                window.google.maps.marker.AdvancedMarkerElement;
 
     // Create markers for each listing
     listings.forEach((listing) => {
@@ -260,7 +273,10 @@ export default function WebMap({ region, listings, onMarkerPress, style }: WebMa
 
     // Fit bounds to show all markers if there are listings
     if (listings.length > 0 && markersRef.current.length > 0) {
-      const useAdvancedMarkers = window.google.maps.marker && window.google.maps.marker.AdvancedMarkerElement;
+      // Use AdvancedMarkerElement only if we have a Map ID
+      const useAdvancedMarkers = mapId && 
+                                  window.google.maps.marker && 
+                                  window.google.maps.marker.AdvancedMarkerElement;
       const bounds = new window.google.maps.LatLngBounds();
       
       markersRef.current.forEach((marker) => {
@@ -304,7 +320,10 @@ export default function WebMap({ region, listings, onMarkerPress, style }: WebMa
 
         // Add user location marker
         if (!markersRef.current.find((m) => m.isUserLocation)) {
-          const useAdvancedMarkers = window.google.maps.marker && window.google.maps.marker.AdvancedMarkerElement;
+          // Use AdvancedMarkerElement only if we have a Map ID
+          const useAdvancedMarkers = mapId && 
+                                      window.google.maps.marker && 
+                                      window.google.maps.marker.AdvancedMarkerElement;
           
           let userMarker: any;
           
