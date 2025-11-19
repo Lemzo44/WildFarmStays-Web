@@ -60,10 +60,34 @@ export default function ListingManagement({ onNavigate, initialFilter }: Listing
       // Filter by status (check both status and availability fields)
       if (filterStatus !== 'all') {
         allListings = allListings.filter((l: any) => {
-          if (filterStatus === 'pending') return l.status === 'pending';
-          if (filterStatus === 'available') return l.status === 'approved' || l.status === 'live';
-          if (filterStatus === 'suspended') return l.availability === 'suspended';
-          if (filterStatus === 'rejected') return l.status === 'rejected';
+          // Handle both snake_case and camelCase field names
+          const listingStatus = l.status;
+          const listingAvailability = l.availability;
+          
+          if (filterStatus === 'pending') return listingStatus === 'pending';
+          
+          // For 'available', check status is approved/live AND availability is not suspended
+          if (filterStatus === 'available') {
+            return (listingStatus === 'approved' || listingStatus === 'live') && 
+                   listingAvailability !== 'suspended';
+          }
+          
+          // For 'suspended', check availability field (case-insensitive check)
+          if (filterStatus === 'suspended') {
+            const avail = String(listingAvailability || '').toLowerCase();
+            const matches = avail === 'suspended';
+            if (!matches && listingAvailability) {
+              console.log('Suspended filter: Listing does not match', {
+                listingId: l.id,
+                listingTitle: l.title,
+                availability: listingAvailability,
+                normalized: avail
+              });
+            }
+            return matches;
+          }
+          
+          if (filterStatus === 'rejected') return listingStatus === 'rejected';
           return true;
         });
       }
@@ -254,11 +278,15 @@ export default function ListingManagement({ onNavigate, initialFilter }: Listing
     try {
       const listing = await APIService.getById('listings', listingId);
       if (listing) {
-        await APIService.update('listings', listingId, {
+        const result = await APIService.update('listings', listingId, {
           availability: 'suspended'
         });
+        console.log('Suspend result:', result);
+        console.log('Suspended listing availability:', result?.availability);
         window.alert('Listing suspended successfully');
+        // Reload listings and reapply filters
         await loadListings();
+        await applyFilters();
       } else {
         window.alert('Error: Listing not found');
       }
