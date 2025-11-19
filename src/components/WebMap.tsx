@@ -260,17 +260,33 @@ export default function WebMap({ region, listings, onMarkerPress, style }: WebMa
 
     // Fit bounds to show all markers if there are listings
     if (listings.length > 0 && markersRef.current.length > 0) {
+      const useAdvancedMarkers = window.google.maps.marker && window.google.maps.marker.AdvancedMarkerElement;
       const bounds = new window.google.maps.LatLngBounds();
+      
       markersRef.current.forEach((marker) => {
-        bounds.extend(marker.getPosition());
+        // Get position - different for AdvancedMarkerElement vs Marker
+        const position = useAdvancedMarkers 
+          ? marker.position  // AdvancedMarkerElement has position property
+          : marker.getPosition(); // Marker has getPosition() method
+        
+        if (position) {
+          bounds.extend(position);
+        }
       });
       
       // Only fit bounds if we have multiple markers, otherwise just center on the marker
       if (markersRef.current.length > 1) {
         mapInstanceRef.current.fitBounds(bounds);
       } else {
-        mapInstanceRef.current.setCenter(markersRef.current[0].getPosition());
-        mapInstanceRef.current.setZoom(12);
+        const firstMarker = markersRef.current[0];
+        const firstPosition = useAdvancedMarkers 
+          ? firstMarker.position 
+          : firstMarker.getPosition();
+        
+        if (firstPosition) {
+          mapInstanceRef.current.setCenter(firstPosition);
+          mapInstanceRef.current.setZoom(12);
+        }
       }
     }
   }, [isLoaded, listings, onMarkerPress]);
