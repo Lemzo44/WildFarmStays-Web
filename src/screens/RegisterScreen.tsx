@@ -43,15 +43,59 @@ export default function RegisterScreen({ onNavigate, userRole: initialRole }: Re
     };
   }, []);
 
+  // Clear all form fields when component mounts or when role changes
+  useEffect(() => {
+    const clearFields = () => {
+      setFirstName('');
+      setLastName('');
+      setEmail('');
+      setPassword('');
+      setConfirmPassword('');
+      setPhone('');
+      setPasswordError('');
+      setFarmName('');
+      setFarmAddress('');
+      setPostcode('');
+      setRegistrationSuccess(false);
+    };
+
+    // Clear fields on mount
+    clearFields();
+  }, [initialRole]); // Clear when role prop changes or component mounts
+
   // Handle navigation after successful registration
   useEffect(() => {
     if (registrationSuccess) {
       // Wait a moment for auth state to update
       const timer = setTimeout(() => {
         if (currentUser) {
+          // Clear all fields before navigating
+          setFirstName('');
+          setLastName('');
+          setEmail('');
+          setPassword('');
+          setConfirmPassword('');
+          setPhone('');
+          setPasswordError('');
+          setFarmName('');
+          setFarmAddress('');
+          setPostcode('');
+          
           // User is logged in, navigate to home
           onNavigate?.('home');
         } else {
+          // Clear all fields
+          setFirstName('');
+          setLastName('');
+          setEmail('');
+          setPassword('');
+          setConfirmPassword('');
+          setPhone('');
+          setPasswordError('');
+          setFarmName('');
+          setFarmAddress('');
+          setPostcode('');
+          
           // Email confirmation required, navigate to login with message
           Alert.alert(
             'Registration Successful!', 
@@ -209,6 +253,8 @@ export default function RegisterScreen({ onNavigate, userRole: initialRole }: Re
           onChangeText={setEmail}
           keyboardType="email-address"
           autoCapitalize="none"
+          autoComplete="off"
+          autoCorrect={false}
         />
 
         <Text style={styles.label}>Phone Number *</Text>
@@ -264,6 +310,8 @@ export default function RegisterScreen({ onNavigate, userRole: initialRole }: Re
             setTimeout(() => validatePasswords(text, confirmPassword), 0);
           }}
           secureTextEntry
+          autoComplete="new-password"
+          autoCorrect={false}
         />
 
         <Text style={styles.label}>Confirm Password *</Text>
@@ -276,6 +324,8 @@ export default function RegisterScreen({ onNavigate, userRole: initialRole }: Re
             setTimeout(() => validatePasswords(password, text), 0);
           }}
           secureTextEntry
+          autoComplete="new-password"
+          autoCorrect={false}
           onSubmitEditing={handleSubmit}
         />
         {passwordError ? <Text style={styles.errorText}>{passwordError}</Text> : null}
