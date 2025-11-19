@@ -51,9 +51,9 @@ export default function WebMap({ region, listings, onMarkerPress, style }: WebMa
       return;
     }
 
-    // Load Google Maps script with async loading
+    // Load Google Maps script with async loading and marker library
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&loading=async`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,marker&loading=async`;
     script.async = true;
     script.defer = true;
     script.onload = () => {
@@ -148,9 +148,16 @@ export default function WebMap({ region, listings, onMarkerPress, style }: WebMa
 
     // Clear existing markers
     markersRef.current.forEach((marker) => {
-      marker.setMap(null);
+      if (marker.setMap) {
+        marker.setMap(null);
+      } else if (marker.map) {
+        marker.map = null;
+      }
     });
     markersRef.current = [];
+
+    // Check if AdvancedMarkerElement is available (new API) or fallback to Marker (deprecated but still works)
+    const useAdvancedMarkers = window.google.maps.marker && window.google.maps.marker.AdvancedMarkerElement;
 
     // Create markers for each listing
     listings.forEach((listing) => {
@@ -159,25 +166,47 @@ export default function WebMap({ region, listings, onMarkerPress, style }: WebMa
         return;
       }
 
-      // Create a custom marker icon using a simple SVG without emoji
-      const markerIcon = {
-        path: window.google.maps.SymbolPath.CIRCLE,
-        scale: 10,
-        fillColor: '#2E7D32',
-        fillOpacity: 1,
-        strokeColor: '#FFFFFF',
-        strokeWeight: 2,
+      const position = {
+        lat: parseFloat(listing.latitude),
+        lng: parseFloat(listing.longitude),
       };
 
-      const marker = new window.google.maps.Marker({
-        position: {
-          lat: parseFloat(listing.latitude),
-          lng: parseFloat(listing.longitude),
-        },
-        map: mapInstanceRef.current,
-        title: listing.title,
-        icon: markerIcon,
-      });
+      let marker: any;
+
+      if (useAdvancedMarkers) {
+        // Use new AdvancedMarkerElement API
+        const pinElement = document.createElement('div');
+        pinElement.style.width = '20px';
+        pinElement.style.height = '20px';
+        pinElement.style.borderRadius = '50%';
+        pinElement.style.backgroundColor = '#2E7D32';
+        pinElement.style.border = '2px solid #FFFFFF';
+        pinElement.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
+
+        marker = new window.google.maps.marker.AdvancedMarkerElement({
+          map: mapInstanceRef.current,
+          position,
+          title: listing.title,
+          content: pinElement,
+        });
+      } else {
+        // Fallback to deprecated Marker API (still works, just shows warning)
+        const markerIcon = {
+          path: window.google.maps.SymbolPath.CIRCLE,
+          scale: 10,
+          fillColor: '#2E7D32',
+          fillOpacity: 1,
+          strokeColor: '#FFFFFF',
+          strokeWeight: 2,
+        };
+
+        marker = new window.google.maps.Marker({
+          position,
+          map: mapInstanceRef.current,
+          title: listing.title,
+          icon: markerIcon,
+        });
+      }
 
       // Create info window
       const infoWindow = new window.google.maps.InfoWindow({
@@ -199,7 +228,7 @@ export default function WebMap({ region, listings, onMarkerPress, style }: WebMa
         `,
       });
 
-      // Add click handler
+      // Add click handler (works for both Marker and AdvancedMarkerElement)
       marker.addListener('click', () => {
         // Close all other info windows
         markersRef.current.forEach((m) => {
@@ -208,7 +237,15 @@ export default function WebMap({ region, listings, onMarkerPress, style }: WebMa
           }
         });
 
-        infoWindow.open(mapInstanceRef.current, marker);
+        // Open info window - works for both Marker and AdvancedMarkerElement
+        if (useAdvancedMarkers) {
+          infoWindow.open({
+            anchor: marker,
+            map: mapInstanceRef.current,
+          });
+        } else {
+          infoWindow.open(mapInstanceRef.current, marker);
+        }
         
         // Call the onMarkerPress callback if provided
         if (onMarkerPress) {
@@ -251,20 +288,45 @@ export default function WebMap({ region, listings, onMarkerPress, style }: WebMa
 
         // Add user location marker
         if (!markersRef.current.find((m) => m.isUserLocation)) {
-          const userMarker = new window.google.maps.Marker({
-            position: userLocation,
-            map: mapInstanceRef.current,
-            title: 'Your Location',
-            icon: {
-              path: window.google.maps.SymbolPath.CIRCLE,
-              scale: 8,
-              fillColor: '#2196F3',
-              fillOpacity: 1,
-              strokeColor: '#FFFFFF',
-              strokeWeight: 2,
-            },
-            zIndex: 1000,
-          });
+          const useAdvancedMarkers = window.google.maps.marker && window.google.maps.marker.AdvancedMarkerElement;
+          
+          let userMarker: any;
+          
+          if (useAdvancedMarkers) {
+            // Use AdvancedMarkerElement for user location
+            const userPinElement = document.createElement('div');
+            userPinElement.style.width = '16px';
+            userPinElement.style.height = '16px';
+            userPinElement.style.borderRadius = '50%';
+            userPinElement.style.backgroundColor = '#2196F3';
+            userPinElement.style.border = '2px solid #FFFFFF';
+            userPinElement.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
+
+            userMarker = new window.google.maps.marker.AdvancedMarkerElement({
+              map: mapInstanceRef.current,
+              position: userLocation,
+              title: 'Your Location',
+              content: userPinElement,
+              zIndex: 1000,
+            });
+          } else {
+            // Fallback to deprecated Marker API
+            userMarker = new window.google.maps.Marker({
+              position: userLocation,
+              map: mapInstanceRef.current,
+              title: 'Your Location',
+              icon: {
+                path: window.google.maps.SymbolPath.CIRCLE,
+                scale: 8,
+                fillColor: '#2196F3',
+                fillOpacity: 1,
+                strokeColor: '#FFFFFF',
+                strokeWeight: 2,
+              },
+              zIndex: 1000,
+            });
+          }
+          
           userMarker.isUserLocation = true;
           markersRef.current.push(userMarker);
         }
