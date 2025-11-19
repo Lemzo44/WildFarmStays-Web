@@ -351,7 +351,10 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps = {}) {
             <Text style={styles.emptyText}>
               No recent stays yet. Start exploring farms!
             </Text>
-            <TouchableOpacity style={styles.actionButton}>
+            <TouchableOpacity 
+              style={styles.actionButton}
+              onPress={() => onNavigate?.('search')}
+            >
               <Text style={styles.actionButtonText}>Search Map</Text>
             </TouchableOpacity>
           </View>
@@ -361,7 +364,10 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps = {}) {
             <Text style={styles.emptyText}>
               No favorite farms yet. Add some farms you love!
             </Text>
-            <TouchableOpacity style={styles.actionButton}>
+            <TouchableOpacity 
+              style={styles.actionButton}
+              onPress={() => onNavigate?.('listings')}
+            >
               <Text style={styles.actionButtonText}>Discover Farms</Text>
             </TouchableOpacity>
           </View>

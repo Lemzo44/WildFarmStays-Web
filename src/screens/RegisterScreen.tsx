@@ -66,51 +66,31 @@ export default function RegisterScreen({ onNavigate, userRole: initialRole }: Re
   // Handle navigation after successful registration
   useEffect(() => {
     if (registrationSuccess) {
-      // Wait a moment for auth state to update
-      const timer = setTimeout(() => {
-        if (currentUser) {
-          // Clear all fields before navigating
-          setFirstName('');
-          setLastName('');
-          setEmail('');
-          setPassword('');
-          setConfirmPassword('');
-          setPhone('');
-          setPasswordError('');
-          setFarmName('');
-          setFarmAddress('');
-          setPostcode('');
-          
-          // User is logged in, navigate to home
-          onNavigate?.('home');
-        } else {
-          // Clear all fields
-          setFirstName('');
-          setLastName('');
-          setEmail('');
-          setPassword('');
-          setConfirmPassword('');
-          setPhone('');
-          setPasswordError('');
-          setFarmName('');
-          setFarmAddress('');
-          setPostcode('');
-          
-          // Email confirmation required, navigate to login with message
-          Alert.alert(
-            'Registration Successful!', 
-            'Please check your email to confirm your account, then log in.',
-            [
-              { text: 'OK', onPress: () => onNavigate?.('login') }
-            ]
-          );
-        }
-        setRegistrationSuccess(false); // Reset flag
-      }, 500);
+      // Clear all fields
+      setFirstName('');
+      setLastName('');
+      setEmail('');
+      setPassword('');
+      setConfirmPassword('');
+      setPhone('');
+      setPasswordError('');
+      setFarmName('');
+      setFarmAddress('');
+      setPostcode('');
       
-      return () => clearTimeout(timer);
+      // Always navigate to login screen after registration
+      // User must log in manually, even if email confirmation is not required
+      Alert.alert(
+        'Registration Successful!', 
+        'Your account has been created. Please log in to continue.',
+        [
+          { text: 'OK', onPress: () => onNavigate?.('login') }
+        ]
+      );
+      
+      setRegistrationSuccess(false); // Reset flag
     }
-  }, [registrationSuccess, currentUser, onNavigate]);
+  }, [registrationSuccess, onNavigate]);
 
   // Common fields
   const [firstName, setFirstName] = useState('');

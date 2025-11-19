@@ -269,17 +269,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return false;
         }
 
+        // Don't automatically log in users after registration
+        // They should log in manually through the login screen
         // Check if email confirmation is required
         if (!authData.session) {
           console.warn('⚠️ No session returned - email confirmation may be required');
           console.warn('User ID:', authData.user.id);
           console.warn('User email:', authData.user.email);
-          alert('Registration successful! Please check your email to confirm your account before logging in.');
+          // Don't show alert here - let the UI handle the message
           return true; // Still return true because profile was created
         }
 
-        // 3. Load the new user (only if we have a session)
-        await loadUserFromSupabase(authData.user);
+        // Even if we have a session, don't auto-login
+        // Sign out the user so they must log in manually
+        if (supabase) {
+          await supabase.auth.signOut();
+        }
         return true;
       } catch (error) {
         console.error('Registration exception:', error);
