@@ -14,3 +14,4 @@ COMMENT ON COLUMN public.listings.photo_upload_approved_at IS
 'Timestamp when farmer first approved photo upload access for this listing. Once set, the approval modal will not be shown again for this listing.';
 
 
+

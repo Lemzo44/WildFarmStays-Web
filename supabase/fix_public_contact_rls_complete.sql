@@ -65,3 +65,4 @@ CREATE POLICY "Allow ticket updates"
 ALTER TABLE public.support_tickets ENABLE ROW LEVEL SECURITY;
 
 
+

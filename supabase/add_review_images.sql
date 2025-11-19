@@ -6,3 +6,4 @@ ADD COLUMN IF NOT EXISTS images TEXT[] DEFAULT '{}';
 COMMENT ON COLUMN public.reviews.images IS 'Array of image URLs uploaded by campers with their review (max 3 images)';
 
 
+
