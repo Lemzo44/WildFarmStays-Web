@@ -1,11 +1,20 @@
 import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { useAuth } from '../contexts/AuthContext';
 
 interface JoinCamperScreenProps {
   onNavigate?: (screen: string) => void;
 }
 
 export default function JoinCamperScreen({ onNavigate }: JoinCamperScreenProps) {
+  const { currentUser } = useAuth();
+
+  // Redirect to home if already logged in
+  useEffect(() => {
+    if (currentUser) {
+      onNavigate?.('home');
+    }
+  }, [currentUser, onNavigate]);
   const scrollViewRef = useRef<ScrollView>(null);
 
   const scrollToTop = () => {

@@ -8,8 +8,9 @@ interface RegisterScreenProps {
 }
 
 export default function RegisterScreen({ onNavigate, userRole: initialRole }: RegisterScreenProps) {
-  const { register } = useAuth();
+  const { register, currentUser } = useAuth();
   const [role, setRole] = useState<'camper' | 'farmer'>(initialRole || 'camper');
+  const [registrationSuccess, setRegistrationSuccess] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
 
   const scrollToTop = () => {
@@ -41,6 +42,31 @@ export default function RegisterScreen({ onNavigate, userRole: initialRole }: Re
       clearTimeout(timeoutId3);
     };
   }, []);
+
+  // Handle navigation after successful registration
+  useEffect(() => {
+    if (registrationSuccess) {
+      // Wait a moment for auth state to update
+      const timer = setTimeout(() => {
+        if (currentUser) {
+          // User is logged in, navigate to home
+          onNavigate?.('home');
+        } else {
+          // Email confirmation required, navigate to login with message
+          Alert.alert(
+            'Registration Successful!', 
+            'Please check your email to confirm your account, then log in.',
+            [
+              { text: 'OK', onPress: () => onNavigate?.('login') }
+            ]
+          );
+        }
+        setRegistrationSuccess(false); // Reset flag
+      }, 500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [registrationSuccess, currentUser, onNavigate]);
 
   // Common fields
   const [firstName, setFirstName] = useState('');
@@ -112,9 +138,8 @@ export default function RegisterScreen({ onNavigate, userRole: initialRole }: Re
       if (!success) {
         Alert.alert('Error', 'Registration failed. Email may already be in use.');
       } else {
-        Alert.alert('Success', 'Registration successful!', [
-          { text: 'OK', onPress: () => onNavigate?.('home') }
-        ]);
+        // Set flag to trigger navigation check
+        setRegistrationSuccess(true);
       }
     } catch (error) {
       Alert.alert('Error', 'An error occurred during registration');
